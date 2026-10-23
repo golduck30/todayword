@@ -217,3 +217,457 @@
                     }
                 }
                 return;
+            }
+
+            for (let i = 0; i < maxGuesses; i++) {
+                const isSubmitted = i < submittedGuesses.length;
+                const guess = isSubmitted ? submittedGuesses[i] : (i === submittedGuesses.length ? currentGuess : "");
+
+                for (let j = 0; j < 5; j++) {
+                    const tile = document.getElementById(`tile-${i}-${j}`);
+                    const char = guess[j] || "";
+                    tile.textContent = char;
+                    tile.className = 'tile';
+                    if (char) tile.classList.add('filled');
+
+                    if (isSubmitted) {
+                        const targetChars = secretWord.split('');
+                        const guessChars = guess.split('');
+                        if (guessChars[j] === targetChars[j]) {
+                            tile.classList.add('correct');
+                        } else if (targetChars.includes(guessChars[j])) {
+                            tile.classList.add('present');
+                        } else {
+                            tile.classList.add('absent');
+                        }
+                    }
+                }
+            }
+            updateKeyboardColors();
+            
+            if (currentRoomCode && !isMaster) {
+                const isCompleted = submittedGuesses.includes(secretWord) || submittedGuesses.length >= maxGuesses;
+                const updateData = {
+                    nickname: myNickname,
+                    guesses: submittedGuesses,
+                    completed: isCompleted
+                };
+                if (submittedGuesses.includes(secretWord) && !solvedTimestamp) {
+                    solvedTimestamp = Date.now();
+                    updateData.solvedTimestamp = solvedTimestamp;
+                }
+                db.ref(`rooms/${currentRoomCode}/players/${myUid}`).update(updateData);
+            }
+        }
+
+        function updateKeyboardColors() {
+            if (isMaster) return;
+            const keyElements = document.querySelectorAll('.key');
+            keyElements.forEach(key => {
+                const char = key.textContent.trim();
+                if (char.length !== 1) return;
+                
+                let status = 0;
+                submittedGuesses.forEach(guess => {
+                    for (let j = 0; j < 5; j++) {
+                        if (guess[j] === char) {
+                            if (secretWord[j] === char) status = Math.max(status, 3);
+                            else if (secretWord.includes(char)) status = Math.max(status, 2);
+                            else status = Math.max(status, 1);
+                        }
+                    }
+                });
+
+                key.className = 'key flex-1 py-3';
+                if (status === 3) key.classList.add('correct');
+                else if (status === 2) key.classList.add('present');
+                else if (status === 1) key.classList.add('absent');
+            });
+        }
+
+        function handleKey(char) {
+            if (isMaster) {
+                if (hasMasterSetWord) return;
+                if (makerWord.length < 5) {
+                    makerWord += char;
+                    renderBoard();
+                }
+                return;
+            }
+
+            if (isGameOver) return;
+            if (submittedGuesses.length >= maxGuesses) return;
+            if (currentGuess.length < 5) {
+                currentGuess += char;
+                renderBoard();
+            }
+        }
+
+        function handleDelete() {
+            if (isMaster) {
+                if (hasMasterSetWord) return;
+                if (makerWord.length > 0) {
+                    makerWord = makerWord.slice(0, -1);
+                    renderBoard();
+                }
+                return;
+            }
+
+            if (isGameOver) return;
+            if (currentGuess.length > 0) {
+                currentGuess = currentGuess.slice(0, -1);
+                renderBoard();
+            }
+        }
+
+        function handleSubmit() {
+            if (isMaster) {
+                if (hasMasterSetWord) {
+                    showToast("이미 출제가 완료되었습니다!");
+                    return;
+                }
+                if (makerWord.length !== 5) {
+                    showToast("첫번째 줄에 5자모를 모두 채워주세요!");
+                    return;
+                }
+                db.ref(`rooms/${currentRoomCode}`).update({ secretWord: makerWord });
+                hasMasterSetWord = true;
+                showToast("🎯 문제가 출제되었습니다!");
+                toggleMasterUI();
+                renderBoard();
+                return;
+            }
+
+            if (isGameOver) return;
+            if (submittedGuesses.length >= maxGuesses) return;
+
+            if (!secretWord) {
+                showToast("출제자가 아직 문제를 출제하지 않았습니다!");
+                return;
+            }
+
+            if (currentGuess.length !== 5) {
+                showToast("5자모를 모두 입력한 뒤 제출해주세요!");
+                return;
+            }
+
+            const newGuess = currentGuess;
+            submittedGuesses.push(newGuess);
+            currentGuess = "";
+            renderBoard();
+
+            if (newGuess === secretWord || submittedGuesses.length >= maxGuesses) {
+                isGameOver = true;
+                if (newGuess === secretWord) {
+                    showToast("정답을 맞췄습니다! 다른 참가자들을 기다리는 중...");
+                } else {
+                    showToast("모든 기회를 소모했습니다. 다른 참가자들을 기다리는 중...");
+                }
+            } else {
+                showToast(`${submittedGuesses.length}번째 시도 완료! 다음 단어를 입력하세요.`);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 2000);
+        }
+
+        // --- 멀티플레이 로직 ---
+        function openLobbyModal() {
+            document.getElementById('lobbyModal').classList.remove('hidden');
+        }
+        function closeLobbyModal() {
+            document.getElementById('lobbyModal').classList.add('hidden');
+        }
+        function showJoinInput() {
+            document.getElementById('joinCodeArea').classList.remove('hidden');
+        }
+
+        function createRoom() {
+            const nick = document.getElementById('nicknameInput').value.trim();
+            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
+            myNickname = nick;
+
+            const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+            currentRoomCode = roomCode;
+            isMaster = true;
+
+            db.ref(`rooms/${roomCode}`).set({
+                secretWord: "",
+                masterUid: myUid,
+                masterName: myNickname,
+                round: 1,
+                players: {
+                    [myUid]: { nickname: myNickname, guesses: [], completed: true, solvedTimestamp: 0 }
+                }
+            }).then(() => {
+                closeLobbyModal();
+                enterRoomMode(roomCode, "", true);
+                showToast("대결 방이 생성되었습니다!");
+            });
+        }
+
+        function joinRoom() {
+            const nick = document.getElementById('nicknameInput').value.trim();
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
+            if (roomCode.length !== 6) { alert("올바른 6자리 방 코드를 입력해주세요!"); return; }
+            myNickname = nick;
+            currentRoomCode = roomCode;
+
+            db.ref(`rooms/${roomCode}`).once('value', snapshot => {
+                const room = snapshot.val();
+                if (!room) { alert("존재하지 않는 방입니다."); return; }
+
+                isMaster = (room.masterUid === myUid);
+                db.ref(`rooms/${roomCode}/players/${myUid}`).set({
+                    nickname: myNickname, guesses: [], completed: isMaster, solvedTimestamp: 0
+                });
+
+                closeLobbyModal();
+                enterRoomMode(roomCode, room.secretWord || "", isMaster);
+                showToast("방에 입장했습니다!");
+            });
+        }
+
+        function enterRoomMode(roomCode, word, masterStatus) {
+            secretWord = word;
+            isMaster = masterStatus;
+            document.getElementById('gameModeBadge').textContent = "대결 모드";
+            document.getElementById('multiplayerInfo').classList.remove('hidden');
+            document.getElementById('dispRoomCode').textContent = roomCode;
+            
+            toggleMasterUI();
+
+            if (roomDataListener) db.ref(`rooms/${currentRoomCode}`).off('value', roomDataListener);
+            roomDataListener = db.ref(`rooms/${currentRoomCode}`).on('value', snapshot => {
+                const data = snapshot.val();
+                if (!data) return;
+                
+                if (secretWord !== data.secretWord) {
+                    secretWord = data.secretWord;
+                    if (secretWord) hasMasterSetWord = true;
+                    if (!isMaster) resetGameData();
+                }
+
+                isMaster = (data.masterUid === myUid);
+                document.getElementById('dispMaster').textContent = data.masterName || "알 수 없음";
+
+                toggleMasterUI();
+
+                if (data.players) {
+                    updateSpectatorBoard(data.players);
+
+                    if (data.secretWord && !isResultsShown) {
+                        const participants = Object.entries(data.players).filter(([uid]) => uid !== data.masterUid);
+                        if (participants.length > 0) {
+                            const allCompleted = participants.every(([uid, p]) => p.completed);
+                            if (allCompleted) {
+                                isResultsShown = true;
+                                showResultsModal(data);
+                            }
+                        }
+                    }
+                }
+            });
+
+            resetGameData();
+        }
+
+        function toggleMasterUI() {
+            const submitBtn = document.getElementById('submitBtn');
+            const noticeEl = document.getElementById('masterNotice');
+            document.getElementById('spectatorDashboard').classList.remove('hidden');
+
+            if (isMaster) {
+                noticeEl.classList.remove('hidden');
+                submitBtn.textContent = hasMasterSetWord ? "출제완료" : "문제 출제";
+                submitBtn.className = hasMasterSetWord 
+                    ? "key flex-[2] py-3 bg-slate-400 text-white font-bold pointer-events-none" 
+                    : "key flex-[2] py-3 bg-amber-600 text-white font-bold";
+
+                if (hasMasterSetWord) {
+                    noticeEl.textContent = "🎯 정답 출제 완료! 참가자들의 풀이를 기다리는 중...";
+                } else {
+                    noticeEl.textContent = "🎯 첫 번째 줄 타일에 5자모를 입력하고 [문제 출제] 버튼을 누르세요!";
+                }
+            } else {
+                noticeEl.classList.add('hidden');
+                submitBtn.textContent = "제출";
+                submitBtn.className = "key flex-[2] py-3 bg-emerald-600 text-white font-bold";
+            }
+        }
+
+        function updateSpectatorBoard(players) {
+            const listEl = document.getElementById('playerStatusList');
+            const titleEl = document.getElementById('spectatorTitle');
+            listEl.innerHTML = '';
+
+            if (isMaster) {
+                titleEl.textContent = "👁️ [출제자용] 참가자 입력 상세 관전 보드";
+                for (const [uid, p] of Object.entries(players)) {
+                    if (uid === myUid) continue;
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-2.5 rounded-lg border border-slate-200 space-y-1';
+                    
+                    let rowsHtml = `<div class="font-bold text-xs text-slate-700 flex justify-between"><span>${p.nickname}</span> ${p.completed ? '<span class="text-emerald-600 font-semibold">풀이 완료</span>' : '<span class="text-amber-500">풀이 중...</span>'}</div>`;
+                    rowsHtml += '<div class="space-y-1">';
+                    
+                    const pGuesses = p.guesses || [];
+                    for (let i = 0; i < maxGuesses; i++) {
+                        const g = pGuesses[i] || "";
+                        rowsHtml += '<div class="flex space-x-1">';
+                        for (let j = 0; j < 5; j++) {
+                            const char = g[j] || "";
+                            let tileColor = 'bg-slate-50 border-slate-200 text-slate-400';
+                            if (char && secretWord) {
+                                if (char === secretWord[j]) tileColor = 'bg-emerald-400 border-emerald-400 text-white font-bold';
+                                else if (secretWord.includes(char)) tileColor = 'bg-amber-400 border-amber-400 text-white font-bold';
+                                else tileColor = 'bg-slate-400 border-slate-400 text-white font-bold';
+                            }
+                            rowsHtml += `<div class="w-6 h-6 border rounded flex items-center justify-center text-xs ${tileColor}">${char}</div>`;
+                        }
+                        rowsHtml += '</div>';
+                    }
+                    rowsHtml += '</div>';
+                    div.innerHTML = rowsHtml;
+                    listEl.appendChild(div);
+                }
+            } else {
+                titleEl.textContent = "👁️ 실시간 참가자 현황 관전 보드";
+                for (const [uid, p] of Object.entries(players)) {
+                    if (uid === myUid) continue;
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-2 rounded-lg border border-slate-100 flex items-center justify-between text-xs';
+                    
+                    let miniGridHtml = '<div class="flex space-x-1">';
+                    const pGuesses = p.guesses || [];
+                    for (let i = 0; i < maxGuesses; i++) {
+                        const g = pGuesses[i] || "";
+                        let colorClass = 'bg-slate-100 border border-slate-200';
+                        if (g) {
+                            if (g === secretWord) colorClass = 'bg-emerald-400';
+                            else colorClass = 'bg-amber-400';
+                        }
+                        miniGridHtml += `<div class="w-4 h-4 rounded ${colorClass}"></div>`;
+                    }
+                    miniGridHtml += '</div>';
+
+                    div.innerHTML = `<span class="font-bold text-slate-700">${p.nickname}</span> ${miniGridHtml}`;
+                    listEl.appendChild(div);
+                }
+            }
+        }
+
+        function showResultsModal(data) {
+            const participantsList = Object.entries(data.players)
+                .filter(([uid]) => uid !== data.masterUid)
+                .map(([uid, p]) => {
+                    const solved = (p.guesses || []).includes(data.secretWord);
+                    const attempts = solved ? p.guesses.length : 99;
+                    const timestamp = p.solvedTimestamp || 9999999999999;
+                    return { uid, nickname: p.nickname, solved, attempts, timestamp };
+                });
+
+            // 순위 정렬: 
+            // 1순위: 정답 맞춘 사람 우선
+            // 2순위: 시도 횟수가 적은 사람 우선
+            // 3순위 (동점 시): 먼저 맞힌 사람(solvedTimestamp가 빠른 사람) 우선
+            participantsList.sort((a, b) => {
+                if (a.solved && !b.solved) return -1;
+                if (!a.solved && b.solved) return 1;
+                if (a.attempts !== b.attempts) {
+                    return a.attempts - b.attempts;
+                }
+                return a.timestamp - b.timestamp;
+            });
+
+            document.getElementById('gameOverTitle').textContent = "🏆 라운드 결과지";
+            const descEl = document.getElementById('gameOverDesc');
+            
+            let html = `<p class="text-xs text-slate-500 mb-3">정답: <span class="font-bold text-emerald-600">[ ${data.secretWord} ]</span></p>`;
+            html += `<div class="space-y-2 text-left max-h-48 overflow-y-auto mb-4">`;
+            
+            participantsList.forEach((p, idx) => {
+                const rankText = idx === 0 && p.solved ? "👑 1위" : `${idx + 1}위`;
+                const statusText = p.solved ? `${p.attempts}회 만에 정답! 🎉` : `실패 😢`;
+                html += `
+                    <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                        <span class="font-bold text-slate-700">${rankText} - ${p.nickname}</span>
+                        <span class="${p.solved ? 'text-emerald-600 font-semibold' : 'text-slate-400'}">${statusText}</span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            descEl.innerHTML = html;
+
+            const actionContainer = document.getElementById('gameOverActionContainer');
+            actionContainer.innerHTML = '';
+
+            if (isMaster) {
+                const btn = document.createElement('button');
+                btn.className = 'w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-sm';
+                btn.textContent = '다음 라운드 진행';
+                btn.onclick = nextRound;
+                actionContainer.appendChild(btn);
+            } else {
+                const notice = document.createElement('p');
+                notice.className = 'text-xs text-amber-600 font-semibold py-2';
+                notice.textContent = '⏳ 출제자가 다음 라운드를 진행하기를 기다리는 중입니다...';
+                actionContainer.appendChild(notice);
+            }
+
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        function nextRound() {
+            if (!isMaster) return;
+            document.getElementById('gameOverModal').classList.add('hidden');
+            if (currentRoomCode) {
+                db.ref(`rooms/${currentRoomCode}`).once('value', snapshot => {
+                    const data = snapshot.val();
+                    if (!data || !data.players) return;
+                    const players = Object.keys(data.players);
+                    const currentIndex = players.indexOf(data.masterUid);
+                    const nextMasterUid = players[(currentIndex + 1) % players.length];
+                    const nextMasterName = data.players[nextMasterUid].nickname;
+
+                    db.ref(`rooms/${currentRoomCode}`).update({
+                        secretWord: "",
+                        masterUid: nextMasterUid,
+                        masterName: nextMasterName,
+                        round: (data.round || 1) + 1
+                    });
+                    
+                    const updates = {};
+                    players.forEach(uid => {
+                        updates[`players/${uid}/guesses`] = [];
+                        updates[`players/${uid}/completed`] = (uid === nextMasterUid);
+                        updates[`players/${uid}/solvedTimestamp`] = 0;
+                    });
+                    db.ref(`rooms/${currentRoomCode}`).update(updates);
+                });
+            }
+        }
+
+        function resetGameData() {
+            currentGuess = "";
+            submittedGuesses = [];
+            isGameOver = false;
+            isResultsShown = false;
+            solvedTimestamp = null;
+            makerWord = "";
+            hasMasterSetWord = false;
+            document.getElementById('gameOverModal').classList.add('hidden');
+            initBoard();
+            renderBoard();
+        }
+
+        // 초기화
+        initBoard();
+    </script>
+</body>
+</html>
