@@ -2,944 +2,502 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>한글 워들 대결 - 오늘의 단어 무제한 (출제자 모드)</title>
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>오늘의 단어 - 대결 모드</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase SDK (Compat 버전) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-            background-color: #f8fafc;
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; user-select: none; }
+        .tile {
+            width: 52px; height: 52px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; font-weight: 700; border-radius: 0.75rem;
+            border: 2px solid #e2e8f0; background-color: #ffffff; color: #1e293b;
+            transition: all 0.15s ease-in-out;
         }
-
-        /* Tile Flip Animations */
-        .tile-flip {
-            animation: flip 0.6s ease forwards;
+        .tile.correct { background-color: #4ade80 !important; border-color: #4ade80 !important; color: white !important; }
+        .tile.present { background-color: #facc15 !important; border-color: #facc15 !important; color: white !important; }
+        .tile.absent { background-color: #94a3b8 !important; border-color: #94a3b8 !important; color: white !important; }
+        .tile.filled { border-color: #64748b; transform: scale(1.03); }
+        .key {
+            background-color: #e2e8f0; color: #334155; font-weight: 600;
+            border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: background-color 0.1s; font-size: 0.95rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-        @keyframes flip {
-            0% { transform: rotateX(0deg); }
-            50% { transform: rotateX(90deg); }
-            100% { transform: rotateX(0deg); }
-        }
-
-        .tile-pop {
-            animation: pop 0.1s ease-in-out;
-        }
-        @keyframes pop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
+        .key:active { background-color: #cbd5e1; transform: scale(0.95); }
+        .key.correct { background-color: #4ade80 !important; color: white !important; }
+        .key.present { background-color: #facc15 !important; color: white !important; }
+        .key.absent { background-color: #94a3b8 !important; color: white !important; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col items-center justify-between p-2 sm:p-4">
+<body class="flex flex-col min-h-screen text-slate-800">
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium z-50 opacity-0 transition-opacity duration-300 pointer-events-none flex items-center gap-2">
-        <span id="toast-msg">메시지</span>
-    </div>
-
-    <!-- Header Navigation -->
-    <header class="w-full max-w-xl flex items-center justify-between py-2 border-b border-slate-200">
-        <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                단
-            </div>
-            <h1 class="text-xl font-extrabold tracking-tight text-slate-800">오늘의 단어 <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">출제자 대결</span></h1>
+    <!-- 상단 헤더 -->
+    <header class="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+        <div class="flex items-center space-x-2">
+            <span class="px-2 py-1 bg-emerald-500 text-white font-black rounded text-lg tracking-wider">단</span>
+            <h1 class="text-xl font-bold tracking-tight">오늘의 단어</h1>
+            <span id="gameModeBadge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">혼자 하기</span>
         </div>
-        <div class="flex items-center gap-2">
-            <button id="btn-room" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition flex items-center gap-1 font-semibold text-sm">
-                <i data-lucide="users" class="w-5 h-5"></i>
-                <span id="room-badge">대결 방</span>
+        <div class="flex items-center space-x-2">
+            <button onclick="openLobbyModal()" class="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <span id="roomBtnText">대결 방</span>
             </button>
         </div>
     </header>
 
-    <!-- Room / Host Status Banner -->
-    <div id="room-status-bar" class="w-full max-w-xl my-2 hidden bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex flex-col gap-2 text-sm">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="font-bold text-indigo-900">방 코드: <span id="display-room-code" class="font-mono text-indigo-600">------</span></span>
+    <!-- 메인 게임 영역 -->
+    <main class="flex-1 flex flex-col items-center justify-between max-w-md w-full mx-auto p-4">
+        
+        <!-- 대결 정보 바 (멀티플레이시 표시) -->
+        <div id="multiplayerInfo" class="w-full bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-2 hidden">
+            <div class="flex justify-between items-center text-sm">
+                <div>방코드: <span id="dispRoomCode" class="font-bold text-emerald-700"></span></div>
+                <div>출제자: <span id="dispMaster" class="font-bold text-emerald-700"></span></div>
             </div>
-            <div class="flex items-center gap-3">
-                <span id="player-count" class="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">1명 접속 중</span>
-                <button id="btn-copy-code" class="text-xs text-indigo-700 font-bold hover:underline">코드 복사</button>
-            </div>
+            <div id="masterNotice" class="text-xs text-emerald-600 mt-1 font-medium hidden">💡 당신은 이번 라운드 출제자입니다! 5자모 단어를 출제해주세요.</div>
         </div>
-        <div class="flex items-center justify-between pt-2 border-t border-indigo-100/80 text-xs">
-            <span class="text-indigo-800 font-semibold">👑 이번 라운드 출제자: <span id="host-name" class="font-bold text-indigo-950">---</span></span>
-            <span id="role-badge" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold">플레이어 모드</span>
-        </div>
-    </div>
 
-    <!-- Main Game Container -->
-    <main class="w-full max-w-xl flex-1 flex flex-col items-center justify-center gap-4 my-2">
+        <!-- 게임 보드 (6행 5열) -->
+        <div id="board" class="grid grid-rows-6 gap-2 my-auto"></div>
 
-        <!-- Host View (Live Spectator Dashboard) -->
-        <div id="host-dashboard" class="w-full hidden flex-col gap-3">
-            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center space-y-2">
-                <span class="text-xs font-bold text-amber-700 uppercase tracking-wider">내가 출제한 정답 단어</span>
-                <div id="host-secret-word" class="text-2xl font-black text-amber-900 tracking-widest">? ? ? ? ?</div>
-                <p class="text-xs text-amber-600">참가자들이 화면을 맞춰가는 과정을 실시간으로 관전 중입니다.</p>
-            </div>
-
-            <h3 class="text-sm font-extrabold text-slate-700 mt-2 flex items-center gap-1.5">
-                <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i> 참가자 실시간 풀이 상황
-            </h3>
-            <div id="spectator-boards" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <!-- Live Mini Boards for each player -->
+        <!-- 출제자 전용 단어 입력창 (출제자에게만 보임) -->
+        <div id="wordSetterBox" class="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 hidden">
+            <p class="text-xs font-bold text-amber-800 mb-1">🎯 이번 라운드 정답 단어 설정 (5자모)</p>
+            <div class="flex space-x-2">
+                <input type="text" id="customWordInput" maxlength="5" placeholder="예: ㅊㅗㅅㅜㄴ" class="flex-1 px-3 py-1.5 border border-amber-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+                <button onclick="setSecretWord()" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-sm transition">문제 출제</button>
             </div>
         </div>
 
-        <!-- Player Progress Bar (Multiplayer) -->
-        <div id="opponents-container" class="w-full grid grid-cols-2 sm:grid-cols-3 gap-2 hidden">
-            <!-- Opponents status bar -->
+        <!-- 출제자 관전 대시보드 (참가자들의 현황 모니터링) -->
+        <div id="spectatorDashboard" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 hidden max-h-48 overflow-y-auto">
+            <p class="text-xs font-bold text-slate-700 mb-2">👁️ 실시간 참가자 현황 관전 보드</p>
+            <div id="playerStatusList" class="space-y-2"></div>
         </div>
 
-        <!-- Primary Wordle Board (5 x 6) for Active Solvers -->
-        <div id="solver-board-container" class="flex flex-col items-center justify-center">
-            <div id="board" class="grid grid-rows-6 gap-1.5 p-2 bg-slate-100/60 rounded-2xl border border-slate-200 shadow-inner">
-                <!-- 6 Rows generated by JS -->
+        <!-- 키보드 영역 -->
+        <div id="keyboard" class="w-full space-y-1.5 pb-2">
+            <div class="flex justify-center space-x-1.5">
+                <div class="key flex-1 py-3" onclick="handleKey('ㅂ')">ㅂ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅈ')">ㅈ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㄷ')">ㄷ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㄱ')">ㄱ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅅ')">ㅅ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅠ')">ㅠ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅕ')">ㅕ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅑ')">ㅑ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('배경')" onclick="handleDelete()"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"></path></svg></div>
+            </div>
+            <div class="flex justify-center space-x-1.5 px-2">
+                <div class="key flex-1 py-3" onclick="handleKey('ㅁ')">ㅁ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㄴ')">ㄴ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅇ')">ㅇ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㄹ')">ㄹ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅎ')">ㅎ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅗ')">ㅗ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅓ')">ㅓ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅏ')">ㅏ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅣ')">ㅣ</div>
+            </div>
+            <div class="flex justify-center space-x-1.5">
+                <div class="key flex-1 py-3" onclick="handleKey('ㅋ')">ㅋ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅌ')">ㅌ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅊ')">ㅊ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅍ')">ㅍ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅠ')">ㅠ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅜ')">ㅜ</div>
+                <div class="key flex-1 py-3" onclick="handleKey('ㅡ')">ㅡ</div>
+                <div class="key flex-[2] py-3 bg-emerald-600 text-white font-bold" onclick="handleSubmit()">제출</div>
             </div>
         </div>
-
     </main>
 
-    <!-- On-screen Virtual Keyboard -->
-    <div id="keyboard" class="w-full max-w-md flex flex-col gap-1.5 mb-2 select-none">
-        <!-- Row 1: 초성/자음 1 -->
-        <div class="flex justify-center gap-1 touch-manipulation">
-            <button data-key="ㅂ" class="key-btn">ㅂ</button>
-            <button data-key="ㅈ" class="key-btn">ㅈ</button>
-            <button data-key="ㄷ" class="key-btn">ㄷ</button>
-            <button data-key="ㄱ" class="key-btn">ㄱ</button>
-            <button data-key="ㅅ" class="key-btn">ㅅ</button>
-            <button data-key="ㅛ" class="key-btn">ㅛ</button>
-            <button data-key="ㅕ" class="key-btn">ㅕ</button>
-            <button data-key="ㅑ" class="key-btn">ㅑ</button>
-            <button data-key="BACK" class="key-btn bg-slate-300 hover:bg-slate-400 active:bg-slate-500 text-slate-800 px-3">
-                <i data-lucide="delete" class="w-5 h-5 mx-auto"></i>
+    <!-- 대결방 모달 -->
+    <div id="lobbyModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative animate-scale">
+            <button onclick="closeLobbyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
-        </div>
-        <!-- Row 2: 자음/모음 2 -->
-        <div class="flex justify-center gap-1 touch-manipulation">
-            <button data-key="ㅁ" class="key-btn">ㅁ</button>
-            <button data-key="ㄴ" class="key-btn">ㄴ</button>
-            <button data-key="ㅇ" class="key-btn">ㅇ</button>
-            <button data-key="ㄹ" class="key-btn">ㄹ</button>
-            <button data-key="ㅎ" class="key-btn">ㅎ</button>
-            <button data-key="ㅗ" class="key-btn">ㅗ</button>
-            <button data-key="ㅓ" class="key-btn">ㅓ</button>
-            <button data-key="ㅏ" class="key-btn">ㅏ</button>
-            <button data-key="ㅣ" class="key-btn">ㅣ</button>
-        </div>
-        <!-- Row 3: 자음/모음 3 & Enter -->
-        <div class="flex justify-center gap-1 touch-manipulation">
-            <button data-key="ㅋ" class="key-btn">ㅋ</button>
-            <button data-key="ㅌ" class="key-btn">ㅌ</button>
-            <button data-key="ㅊ" class="key-btn">ㅊ</button>
-            <button data-key="ㅍ" class="key-btn">ㅍ</button>
-            <button data-key="ㅠ" class="key-btn">ㅠ</button>
-            <button data-key="ㅜ" class="key-btn">ㅜ</button>
-            <button data-key="ㅡ" class="key-btn">ㅡ</button>
-            <button data-key="ENTER" class="key-btn bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs px-3">
-                제출
-            </button>
-        </div>
-    </div>
-
-    <!-- Modal: Room Creation/Join -->
-    <div id="room-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 space-y-5">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-extrabold text-slate-800">친구와 함께 대결하기</h3>
-                <button id="close-room-modal" class="text-slate-400 hover:text-slate-600">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <!-- User Name Input -->
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">내 닉네임</label>
-                <input type="text" id="user-name" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="닉네임 입력" maxlength="8">
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 pt-2">
-                <button id="btn-create-room" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-md transition">
-                    새 대결방 만들기
-                </button>
-                <button id="btn-show-join" class="bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold text-sm shadow-md transition">
-                    방 참여하기
-                </button>
-            </div>
-
-            <!-- Join Room Section -->
-            <div id="join-section" class="hidden space-y-3 pt-3 border-t border-slate-100">
-                <label class="block text-xs font-bold text-slate-600">6자리 방 코드 입력</label>
-                <div class="flex gap-2">
-                    <input type="text" id="join-code-input" class="w-full border border-slate-300 rounded-xl px-3 py-2 font-mono text-center uppercase tracking-widest text-base focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="XXXXXX" maxlength="6">
-                    <button id="btn-join-room" class="bg-indigo-600 text-white px-4 rounded-xl font-bold text-sm whitespace-nowrap">입장</button>
+            <h2 class="text-xl font-bold mb-4 text-slate-800">친구와 함께 대결하기</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">내 닉네임</label>
+                    <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button onclick="createRoom()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition shadow-sm">새 대결방 만들기</button>
+                    <button onclick="showJoinInput()" class="py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm">방 참여하기</button>
+                </div>
+                <div id="joinCodeArea" class="hidden pt-2 border-t border-slate-100 space-y-2">
+                    <input type="text" id="roomCodeInput" maxlength="6" placeholder="6자리 방 코드 입력" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-center tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="joinRoom()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">참여하기</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Host Set Word -->
-    <div id="host-input-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
-            <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 mx-auto flex items-center justify-center text-2xl font-bold">
-                👑
-            </div>
-            <div>
-                <h3 class="text-xl font-black text-slate-800">당신은 이번 라운드 출제자입니다!</h3>
-                <p class="text-xs text-slate-600 mt-1">친구들이 맞힐 5자모 한글 단어를 입력하세요.<br>(예: ㅊ ㅗ ㅅ ㅜ ㄴ)</p>
-            </div>
-
-            <div class="space-y-2">
-                <div class="flex justify-center gap-1.5" id="host-word-inputs">
-                    <input type="text" class="jamo-input w-10 h-12 border-2 border-slate-300 rounded-lg text-center font-bold text-xl focus:border-amber-500 focus:outline-none" maxlength="1">
-                    <input type="text" class="jamo-input w-10 h-12 border-2 border-slate-300 rounded-lg text-center font-bold text-xl focus:border-amber-500 focus:outline-none" maxlength="1">
-                    <input type="text" class="jamo-input w-10 h-12 border-2 border-slate-300 rounded-lg text-center font-bold text-xl focus:border-amber-500 focus:outline-none" maxlength="1">
-                    <input type="text" class="jamo-input w-10 h-12 border-2 border-slate-300 rounded-lg text-center font-bold text-xl focus:border-amber-500 focus:outline-none" maxlength="1">
-                    <input type="text" class="jamo-input w-10 h-12 border-2 border-slate-300 rounded-lg text-center font-bold text-xl focus:border-amber-500 focus:outline-none" maxlength="1">
-                </div>
-            </div>
-
-            <div class="flex gap-2 pt-2">
-                <button id="btn-random-word" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl text-xs transition">
-                    랜덤 추천
-                </button>
-                <button id="btn-submit-host-word" class="w-2/3 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow transition text-sm">
-                    문제 출제 시작하기
-                </button>
-            </div>
+    <!-- 게임 종료 팝업 -->
+    <div id="gameOverModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
+            <h3 id="gameOverTitle" class="text-2xl font-black mb-2 text-slate-800">게임 종료!</h3>
+            <p id="gameOverDesc" class="text-slate-600 text-sm mb-6">정답을 맞췄습니다!</p>
+            <button onclick="nextRound()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-sm">다음 라운드 진행</button>
         </div>
     </div>
 
-    <!-- Modal: Game Result / Next Game -->
-    <div id="result-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 text-center space-y-4">
-            <div id="result-icon" class="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-3xl">
-                🎉
-            </div>
-            <div>
-                <h3 id="result-title" class="text-2xl font-black text-slate-800">성공했습니다!</h3>
-                <p id="result-desc" class="text-sm text-slate-600 mt-1">정답 단어를 맞히셨습니다.</p>
-            </div>
+    <!-- 알림 토스트 -->
+    <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-sm font-medium opacity-0 transition-opacity pointer-events-none z-50"></div>
 
-            <div class="bg-slate-100 rounded-xl p-3 my-2">
-                <span class="text-xs font-bold text-slate-500 block">정답 단어 (5자모)</span>
-                <span id="result-word" class="text-xl font-black text-emerald-600 tracking-wider">ㅊ ㅗ ㅅ ㅜ ㄴ</span>
-            </div>
-
-            <button id="btn-next-game" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition text-base">
-                다음 출제자 라운드 시작
-            </button>
-        </div>
-    </div>
-
-    <!-- Firebase Dynamic Module Script -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase Setup
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'korean-wordle-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "demo-api-key",
-            authDomain: "demo.firebaseapp.com",
-            projectId: "demo-project",
-            storageBucket: "demo.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:123456"
+    <script>
+        // 파이어베이스 설정 (사용자 지정 Config 적용)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZmxJUr5oaZttF7oIYJSEBb5RgjVQjInY",
+            authDomain: "cofirm-board.firebaseapp.com",
+            databaseURL: "https://cofirm-board-default-rtdb.firebaseio.com",
+            projectId: "cofirm-board",
+            storageBucket: "cofirm-board.appspot.com",
+            messagingSenderId: "367825644618",
+            appId: "1:367825644618:web:3f236c72c0d5347878ab3"
         };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        let currentUser = null;
-        let userId = null;
-
-        // Auto Authentication
-        async function initAuth() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.warn("Firebase Auth fallback to anonymous", err);
-                await signInAnonymously(auth);
-            }
+        // 로컬 유저 고유 ID 생성 (인증 불필요 방식)
+        let myUid = localStorage.getItem('wordle_uid');
+        if (!myUid) {
+            myUid = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('wordle_uid', myUid);
         }
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                userId = user.uid;
-                console.log("Logged in as:", userId);
-            }
-        });
-
-        initAuth();
-
-        // Preset Korean 5-Jamo Word Bank
-        const CLEAN_WORD_BANK = [
-            ['ㅊ', 'ㅗ', 'ㅅ', 'ㅜ', 'ㄴ'],
-            ['ㅎ', 'ㅏ', 'ㄴ', 'ㄱ', 'ㅡ'],
-            ['ㅂ', 'ㅏ', 'ㄹ', 'ㅏ', 'ㅁ'],
-            ['ㄱ', 'ㅜ', 'ㄹ', 'ㅡ', 'ㅁ'],
-            ['ㅅ', 'ㅏ', 'ㄹ', 'ㅏ', 'ㅇ'],
-            ['ㅎ', 'ㅏ', 'ㄴ', 'ㅡ', 'ㄹ'],
-            ['ㅂ', 'ㅏ', 'ㄷ', 'ㅏ', 'ㄱ'],
-            ['ㅁ', 'ㅏ', 'ㅡ', 'ㅁ', 'ㅣ'],
-            ['ㅅ', 'ㅗ', 'ㄴ', 'ㄴ', 'ㅣ'],
-            ['ㅂ', 'ㅗ', 'ㄹ', 'ㅏ', 'ㅁ'],
-            ['ㄱ', 'ㅏ', 'ㅡ', 'ㄹ', 'ㅣ'],
-            ['ㅅ', 'ㅏ', 'ㄱ', 'ㅗ', 'ㅏ'],
-            ['ㄴ', 'ㅏ', 'ㅁ', 'ㅜ', 'ㄹ'],
-            ['ㅈ', 'ㅓ', 'ㄴ', 'ㅎ', 'ㅘ']
-        ];
-
-        // Game State Variables
-        let targetWord = ['ㅊ', 'ㅗ', 'ㅅ', 'ㅜ', 'ㄴ'];
-        let currentRow = 0;
-        let currentCol = 0;
-        let guesses = Array(6).fill(null).map(() => Array(5).fill(''));
-        let guessStatuses = Array(6).fill(null).map(() => Array(5).fill(''));
+        const WORDS = ["ㅊㅗㅅㅜㄴ", "ㅎㅏㄴㄱㅡ", "ㅂㅏㄷㅏㅁ", "ㅅㅏㄹㅏㅇ", "ㄱㅗㅇㅂㅜ", "ㅇㅣㄴㅌㅓ", "ㄴㅗㅌㅡㅂ", "ㅋㅗㅍㅣㄴ"];
+        let secretWord = "ㅊㅗㅅㅜㄴ";
+        let currentGuess = "";
+        let guesses = [];
+        let maxGuesses = 6;
         let isGameOver = false;
 
-        // Room & Host State
+        // 멀티플레이 상태
         let currentRoomCode = null;
-        let roomUnsubscribe = null;
-        let hostUserId = null;
-        let playerOrderList = [];
-        let nickname = localStorage.getItem('wordle_nickname') || '플레이어' + Math.floor(Math.random() * 1000);
+        let myNickname = "플레이어";
+        let isMaster = false;
+        let roomDataListener = null;
 
-        // UI Element References
         const boardEl = document.getElementById('board');
         const keyboardEl = document.getElementById('keyboard');
-        const toastEl = document.getElementById('toast');
-        const toastMsgEl = document.getElementById('toast-msg');
 
-        // Modal Elements
-        const roomModal = document.getElementById('room-modal');
-        const hostInputModal = document.getElementById('host-input-modal');
-        const resultModal = document.getElementById('result-modal');
-        const userNameInput = document.getElementById('user-name');
-        const hostDashboard = document.getElementById('host-dashboard');
-        const solverBoardContainer = document.getElementById('solver-board-container');
-        const roleBadge = document.getElementById('role-badge');
-        const hostNameEl = document.getElementById('host-name');
-        const hostSecretWordEl = document.getElementById('host-secret-word');
-        const spectatorBoardsEl = document.getElementById('spectator-boards');
-        
-        userNameInput.value = nickname;
-
-        // Initialize Board UI (6 Rows x 5 Cols)
         function initBoard() {
             boardEl.innerHTML = '';
-            for (let r = 0; r < 6; r++) {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'grid grid-cols-5 gap-1.5';
-                for (let c = 0; c < 5; c++) {
+            for (let i = 0; i < maxGuesses; i++) {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-5 gap-2';
+                for (let j = 0; j < 5; j++) {
                     const tile = document.createElement('div');
-                    tile.id = `tile-${r}-${c}`;
-                    tile.className = 'w-12 h-12 sm:w-14 sm:h-14 border-2 border-slate-300 rounded-xl flex items-center justify-center font-bold text-xl sm:text-2xl bg-white text-slate-800 transition-all select-none shadow-sm';
-                    rowDiv.appendChild(tile);
+                    tile.className = 'tile';
+                    tile.id = `tile-${i}-${j}`;
+                    row.appendChild(tile);
                 }
-                boardEl.appendChild(rowDiv);
+                boardEl.appendChild(row);
             }
         }
 
-        // Show Toast Notification
-        function showToast(msg, duration = 2000) {
-            toastMsgEl.textContent = msg;
-            toastEl.classList.remove('opacity-0');
-            setTimeout(() => {
-                toastEl.classList.add('opacity-0');
-            }, duration);
-        }
+        function renderBoard() {
+            for (let i = 0; i < maxGuesses; i++) {
+                const guess = guesses[i] || "";
+                for (let j = 0; j < 5; j++) {
+                    const tile = document.getElementById(`tile-${i}-${j}`);
+                    const char = guess[j] || "";
+                    tile.textContent = char;
+                    tile.className = 'tile';
+                    if (char) tile.classList.add('filled');
 
-        // Update Tile UI
-        function updateTile(r, c, letter) {
-            const tile = document.getElementById(`tile-${r}-${c}`);
-            if (tile) {
-                tile.textContent = letter;
-                if (letter) {
-                    tile.classList.add('border-slate-500', 'tile-pop');
-                } else {
-                    tile.classList.remove('border-slate-500', 'tile-pop');
-                }
-            }
-        }
-
-        // Handle Virtual Keyboard Styles
-        function updateKeyboardStyle(key, status) {
-            const btns = keyboardEl.querySelectorAll('button');
-            btns.forEach(btn => {
-                if (btn.getAttribute('data-key') === key) {
-                    if (status === 'correct') {
-                        btn.className = 'key-btn bg-emerald-500 text-white font-bold';
-                    } else if (status === 'present' && !btn.classList.contains('bg-emerald-500')) {
-                        btn.className = 'key-btn bg-amber-400 text-white font-bold';
-                    } else if (status === 'absent' && !btn.classList.contains('bg-emerald-500') && !btn.classList.contains('bg-amber-400')) {
-                        btn.className = 'key-btn bg-slate-400 text-white opacity-60';
-                    }
-                }
-            });
-        }
-
-        // Apply Custom Key Button Base Class
-        function setupKeyboardButtons() {
-            const btns = keyboardEl.querySelectorAll('.key-btn');
-            btns.forEach(btn => {
-                if (!btn.classList.contains('bg-emerald-600') && !btn.classList.contains('bg-slate-300')) {
-                    btn.className = 'key-btn bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-800 font-bold rounded-lg h-11 px-2.5 sm:px-3 text-base sm:text-lg shadow-sm transition flex items-center justify-center';
-                }
-            });
-        }
-
-        // Check & Submit Guess
-        async function submitGuess() {
-            if (currentCol < 5) {
-                showToast('5개 글자를 모두 입력해주세요!');
-                return;
-            }
-
-            const currentGuess = guesses[currentRow];
-            const targetCopy = [...targetWord];
-            const resultStatuses = Array(5).fill('absent');
-
-            // 1st Pass: Correct positions (Green)
-            for (let i = 0; i < 5; i++) {
-                if (currentGuess[i] === targetCopy[i]) {
-                    resultStatuses[i] = 'correct';
-                    targetCopy[i] = null;
-                }
-            }
-
-            // 2nd Pass: Present but wrong position (Yellow)
-            for (let i = 0; i < 5; i++) {
-                if (resultStatuses[i] !== 'correct') {
-                    const matchIdx = targetCopy.indexOf(currentGuess[i]);
-                    if (matchIdx !== -1) {
-                        resultStatuses[i] = 'present';
-                        targetCopy[matchIdx] = null;
+                    if (i < guesses.length) {
+                        const targetChars = secretWord.split('');
+                        const guessChars = guess.split('');
+                        if (guessChars[j] === targetChars[j]) {
+                            tile.classList.add('correct');
+                        } else if (targetChars.includes(guessChars[j])) {
+                            tile.classList.add('present');
+                        } else {
+                            tile.classList.add('absent');
+                        }
                     }
                 }
             }
-
-            guessStatuses[currentRow] = resultStatuses;
-
-            // Flip animation and apply colors
-            for (let i = 0; i < 5; i++) {
-                const tile = document.getElementById(`tile-${currentRow}-${i}`);
-                const status = resultStatuses[i];
-                const letter = currentGuess[i];
-
-                setTimeout(() => {
-                    tile.classList.add('tile-flip');
-                    if (status === 'correct') {
-                        tile.className = 'w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-xl sm:text-2xl bg-emerald-500 text-white border-0 shadow-md tile-flip';
-                    } else if (status === 'present') {
-                        tile.className = 'w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-xl sm:text-2xl bg-amber-400 text-white border-0 shadow-md tile-flip';
-                    } else {
-                        tile.className = 'w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-xl sm:text-2xl bg-slate-400 text-white border-0 tile-flip';
-                    }
-                    updateKeyboardStyle(letter, status);
-                }, i * 150);
-            }
-
-            const isWin = resultStatuses.every(s => s === 'correct');
-
-            // Sync with Firebase multiplayer if room active
-            if (currentRoomCode && userId) {
-                syncPlayerProgress(currentRow + 1, isWin, guesses, guessStatuses);
-            }
-
-            setTimeout(() => {
-                if (isWin) {
-                    isGameOver = true;
-                    showResultModal(true);
-                } else if (currentRow === 5) {
-                    isGameOver = true;
-                    showResultModal(false);
-                } else {
-                    currentRow++;
-                    currentCol = 0;
-                }
-            }, 5 * 150 + 200);
-        }
-
-        // Key Press Logic
-        function handleKeyPress(key) {
-            if (isGameOver || userId === hostUserId) return; // Spectator cannot play
-
-            if (key === 'BACK' || key === 'Backspace') {
-                if (currentCol > 0) {
-                    currentCol--;
-                    guesses[currentRow][currentCol] = '';
-                    updateTile(currentRow, currentCol, '');
-                }
-            } else if (key === 'ENTER' || key === 'Enter') {
-                submitGuess();
-            } else if (/^[ㄱ-ㅎ|ㅏ-ㅣ]$/.test(key)) {
-                if (currentCol < 5) {
-                    guesses[currentRow][currentCol] = key;
-                    updateTile(currentRow, currentCol, key);
-                    currentCol++;
-                }
-            }
-        }
-
-        // On-screen Keyboard Listener
-        keyboardEl.addEventListener('click', (e) => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const key = btn.getAttribute('data-key');
-            if (key) handleKeyPress(key);
-        });
-
-        // Physical Keyboard Listener
-        window.addEventListener('keydown', (e) => {
-            handleKeyPress(e.key);
-        });
-
-        // Game Result Modal
-        function showResultModal(win) {
-            const titleEl = document.getElementById('result-title');
-            const descEl = document.getElementById('result-desc');
-            const iconEl = document.getElementById('result-icon');
-            const wordEl = document.getElementById('result-word');
-
-            wordEl.textContent = targetWord.join(' ');
-
-            if (win) {
-                iconEl.textContent = '🎉';
-                iconEl.className = 'w-16 h-16 rounded-full mx-auto flex items-center justify-center text-3xl bg-emerald-100 text-emerald-600';
-                titleEl.textContent = '정답입니다!';
-                descEl.textContent = `${currentRow + 1}번째 시도만에 완벽하게 맞히셨습니다.`;
-            } else {
-                iconEl.textContent = '😅';
-                iconEl.className = 'w-16 h-16 rounded-full mx-auto flex items-center justify-center text-3xl bg-rose-100 text-rose-600';
-                titleEl.textContent = '아쉽네요!';
-                descEl.textContent = '모든 시도를 사용하였습니다.';
-            }
-
-            resultModal.classList.remove('hidden');
-        }
-
-        // Next Round Rotation Button Logic
-        document.getElementById('btn-next-game').addEventListener('click', async () => {
-            if (!currentRoomCode) {
-                resetGame();
-                return;
-            }
-
-            // Find Next Host in order
-            const currentHostIndex = playerOrderList.indexOf(hostUserId);
-            const nextHostIndex = (currentHostIndex + 1) % playerOrderList.length;
-            const nextHostId = playerOrderList[nextHostIndex];
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomCode);
-            try {
-                // Reset game state and change host
-                const roomSnap = await getDoc(roomRef);
-                if (roomSnap.exists()) {
-                    const players = roomSnap.data().players || {};
-                    Object.keys(players).forEach(pId => {
-                        players[pId].attempts = 0;
-                        players[pId].isWin = false;
-                        players[pId].guesses = Array(6).fill(null).map(() => Array(5).fill(''));
-                        players[pId].guessStatuses = Array(6).fill(null).map(() => Array(5).fill(''));
-                    });
-
-                    await updateDoc(roomRef, {
-                        hostUserId: nextHostId,
-                        targetWord: null, // Host will set new word
-                        players: players
-                    });
-                }
-                resultModal.classList.add('hidden');
-            } catch (err) {
-                console.error("Next round update error:", err);
-            }
-        });
-
-        // Reset Game locally
-        function resetGame() {
-            currentRow = 0;
-            currentCol = 0;
-            guesses = Array(6).fill(null).map(() => Array(5).fill(''));
-            guessStatuses = Array(6).fill(null).map(() => Array(5).fill(''));
-            isGameOver = false;
-            initBoard();
-            setupKeyboardButtons();
-            resultModal.classList.add('hidden');
-        }
-
-        // ==========================================
-        // HOST INPUT & ROTATION LOGIC
-        // ==========================================
-
-        const jamoInputs = document.querySelectorAll('.jamo-input');
-        
-        // Auto Focus Next Jamo Input
-        jamoInputs.forEach((input, index) => {
-            input.addEventListener('input', (e) => {
-                if (e.target.value && index < 4) {
-                    jamoInputs[index + 1].focus();
-                }
-            });
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                    jamoInputs[index - 1].focus();
-                }
-            });
-        });
-
-        // Host Random Word Auto fill
-        document.getElementById('btn-random-word').addEventListener('click', () => {
-            const randomPick = CLEAN_WORD_BANK[Math.floor(Math.random() * CLEAN_WORD_BANK.length)];
-            jamoInputs.forEach((input, idx) => {
-                input.value = randomPick[idx];
-            });
-        });
-
-        // Submit Host Word
-        document.getElementById('btn-submit-host-word').addEventListener('click', async () => {
-            const inputJamos = Array.from(jamoInputs).map(i => i.value.trim());
-            if (inputJamos.some(j => j === '')) {
-                showToast('5개 자모를 모두 채워주세요!');
-                return;
-            }
-
-            targetWord = inputJamos;
-            hostInputModal.classList.add('hidden');
-
-            if (currentRoomCode) {
-                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomCode);
-                await updateDoc(roomRef, {
-                    targetWord: targetWord
-                });
-                showToast('출제할 문제 단어가 설정되었습니다!');
-            }
-        });
-
-        // ==========================================
-        // MULTIPLAYER ROOM & FIREBASE FUNCTIONS
-        // ==========================================
-
-        const roomModalBtn = document.getElementById('btn-room');
-        const closeRoomModalBtn = document.getElementById('close-room-modal');
-        const btnCreateRoom = document.getElementById('btn-create-room');
-        const btnShowJoin = document.getElementById('btn-show-join');
-        const joinSection = document.getElementById('join-section');
-        const btnJoinRoom = document.getElementById('btn-join-room');
-        const roomStatusBar = document.getElementById('room-status-bar');
-        const displayRoomCode = document.getElementById('display-room-code');
-        const playerCountEl = document.getElementById('player-count');
-        const opponentsContainer = document.getElementById('opponents-container');
-
-        roomModalBtn.addEventListener('click', () => roomModal.classList.remove('hidden'));
-        closeRoomModalBtn.addEventListener('click', () => roomModal.classList.add('hidden'));
-
-        btnShowJoin.addEventListener('click', () => {
-            joinSection.classList.toggle('hidden');
-        });
-
-        // Save Nickname
-        userNameInput.addEventListener('change', (e) => {
-            nickname = e.target.value.trim() || '플레이어';
-            localStorage.setItem('wordle_nickname', nickname);
-        });
-
-        // Generate Random 6-char Room Code
-        function generateRoomCode() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-            let code = '';
-            for (let i = 0; i < 6; i++) {
-                code += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return code;
-        }
-
-        // Create Room
-        btnCreateRoom.addEventListener('click', async () => {
-            if (!userId) {
-                showToast('인증 처리 중입니다. 잠시 후 다시 시도해 주세요.');
-                return;
-            }
-
-            const code = generateRoomCode();
-            currentRoomCode = code;
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
+            updateKeyboardColors();
             
-            try {
-                await setDoc(roomRef, {
-                    code: code,
-                    hostUserId: userId,
-                    targetWord: null, // Wait for host to set
-                    createdAt: Date.now(),
-                    playerOrder: [userId],
-                    players: {
-                        [userId]: {
-                            name: nickname,
-                            attempts: 0,
-                            isWin: false,
-                            guesses: Array(6).fill(null).map(() => Array(5).fill('')),
-                            guessStatuses: Array(6).fill(null).map(() => Array(5).fill('')),
-                            updatedAt: Date.now()
+            // 멀티플레이 중이면 내 상태를 파이어베이스에 실시간 전송
+            if (currentRoomCode) {
+                db.ref(`rooms/${currentRoomCode}/players/${myUid}`).update({
+                    nickname: myNickname,
+                    guesses: guesses,
+                    completed: guesses.includes(secretWord) || guesses.length >= maxGuesses
+                });
+            }
+        }
+
+        function updateKeyboardColors() {
+            const keyElements = document.querySelectorAll('.key');
+            keyElements.forEach(key => {
+                const char = key.textContent.trim();
+                if (char.length !== 1) return;
+                
+                let status = 0; // 0: normal, 1: absent, 2: present, 3: correct
+                guesses.forEach(guess => {
+                    for (let j = 0; j < 5; j++) {
+                        if (guess[j] === char) {
+                            if (secretWord[j] === char) status = Math.max(status, 3);
+                            else if (secretWord.includes(char)) status = Math.max(status, 2);
+                            else status = Math.max(status, 1);
                         }
                     }
                 });
 
-                listenToRoom(code);
-                roomModal.classList.add('hidden');
-                showToast(`대결 방이 생성되었습니다! (코드: ${code})`);
-            } catch (err) {
-                console.error("Room creation error:", err);
-                showToast('방 생성에 실패했습니다.');
-            }
-        });
+                key.className = 'key flex-1 py-3';
+                if (status === 3) key.classList.add('correct');
+                else if (status === 2) key.classList.add('present');
+                else if (status === 1) key.classList.add('absent');
+            });
+        }
 
-        // Join Room
-        btnJoinRoom.addEventListener('click', async () => {
-            const inputCode = document.getElementById('join-code-input').value.trim().toUpperCase();
-            if (inputCode.length !== 6) {
-                showToast('6자리 코드를 올바르게 입력해주세요.');
+        function handleKey(char) {
+            if (isGameOver) return;
+            if (currentGuess.length < 5) {
+                currentGuess += char;
+                guesses[guesses.length] = currentGuess;
+                renderBoard();
+            }
+        }
+
+        function handleDelete() {
+            if (isGameOver) return;
+            if (currentGuess.length > 0) {
+                currentGuess = currentGuess.slice(0, -1);
+                if (currentGuess.length === 0) {
+                    guesses.pop();
+                } else {
+                    guesses[guesses.length - 1] = currentGuess;
+                }
+                renderBoard();
+            }
+        }
+
+        function handleSubmit() {
+            if (isGameOver) return;
+            if (currentGuess.length !== 5) {
+                showToast("5자모를 모두 입력해주세요!");
                 return;
             }
 
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', inputCode);
-            try {
-                const docSnap = await getDoc(roomRef);
-                if (!docSnap.exists()) {
-                    showToast('존재하지 않는 방 코드입니다.');
-                    return;
-                }
+            const submittedGuess = currentGuess;
+            guesses[guesses.length - 1] = submittedGuess;
+            currentGuess = "";
+            renderBoard();
 
-                const data = docSnap.data();
-                currentRoomCode = inputCode;
-
-                const updatedOrder = [...(data.playerOrder || []), userId];
-
-                // Register Current Player
-                await updateDoc(roomRef, {
-                    playerOrder: updatedOrder,
-                    [`players.${userId}`]: {
-                        name: nickname,
-                        attempts: 0,
-                        isWin: false,
-                        guesses: Array(6).fill(null).map(() => Array(5).fill('')),
-                        guessStatuses: Array(6).fill(null).map(() => Array(5).fill('')),
-                        updatedAt: Date.now()
-                    }
-                });
-
-                listenToRoom(inputCode);
-                roomModal.classList.add('hidden');
-                resetGame();
-                showToast('대결 방에 입장하셨습니다!');
-            } catch (err) {
-                console.error("Join room error:", err);
-                showToast('방 입장에 실패했습니다.');
+            if (submittedGuess === secretWord) {
+                isGameOver = true;
+                showGameOverModal("정답입니다! 🎉", `시도 횟수: ${guesses.length}회`);
+            } else if (guesses.length >= maxGuesses) {
+                isGameOver = true;
+                showGameOverModal("게임 오버 😢", `정답은 [ ${secretWord} ] 입니다.`);
+            } else {
+                guesses.push("");
             }
-        });
+        }
 
-        // Listen for Real-time Updates in Room
-        function listenToRoom(code) {
-            if (roomUnsubscribe) roomUnsubscribe();
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 2000);
+        }
 
-            displayRoomCode.textContent = code;
-            roomStatusBar.classList.remove('hidden');
+        // --- 멀티플레이 로직 ---
+        function openLobbyModal() {
+            document.getElementById('lobbyModal').classList.remove('hidden');
+        }
+        function closeLobbyModal() {
+            document.getElementById('lobbyModal').classList.add('hidden');
+        }
+        function showJoinInput() {
+            document.getElementById('joinCodeArea').classList.remove('hidden');
+        }
 
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
-            
-            roomUnsubscribe = onSnapshot(roomRef, (snapshot) => {
-                if (!snapshot.exists()) return;
+        function createRoom() {
+            const nick = document.getElementById('nicknameInput').value.trim();
+            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
+            myNickname = nick;
 
-                const data = snapshot.data();
-                hostUserId = data.hostUserId;
-                playerOrderList = data.playerOrder || [];
-                const players = data.players || {};
-                const playerList = Object.entries(players);
+            const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+            currentRoomCode = roomCode;
+            isMaster = true;
 
-                playerCountEl.textContent = `${playerList.length}명 접속 중`;
+            const initialWord = WORDS[Math.floor(Math.random() * WORDS.length)];
 
-                // Update Host Info Banner
-                const hostData = players[hostUserId];
-                hostNameEl.textContent = hostData ? hostData.name : '미정';
-
-                // Check Role (Is Current User Host or Solver?)
-                if (userId === hostUserId) {
-                    // I am the Host
-                    roleBadge.textContent = '👑 출제자 모드';
-                    roleBadge.className = 'bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold';
-                    
-                    solverBoardContainer.classList.add('hidden');
-                    keyboardEl.classList.add('hidden');
-                    opponentsContainer.classList.add('hidden');
-                    hostDashboard.classList.remove('hidden');
-
-                    if (!data.targetWord) {
-                        // Prompt Host to input target word
-                        hostSecretWordEl.textContent = "? ? ? ? ?";
-                        hostInputModal.classList.remove('hidden');
-                    } else {
-                        targetWord = data.targetWord;
-                        hostSecretWordEl.textContent = targetWord.join(' ');
-                        hostInputModal.classList.add('hidden');
-                    }
-
-                    // Render Real-time Spectator Live Boards
-                    renderSpectatorBoards(players);
-
-                } else {
-                    // I am Solver
-                    roleBadge.textContent = '🎮 풀이 참가자';
-                    roleBadge.className = 'bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold';
-
-                    hostDashboard.classList.add('hidden');
-                    solverBoardContainer.classList.remove('hidden');
-                    keyboardEl.classList.remove('hidden');
-                    opponentsContainer.classList.remove('hidden');
-
-                    if (data.targetWord) {
-                        targetWord = data.targetWord;
-                    }
-
-                    // Render Progress Bar for other solvers
-                    renderOpponentsStatus(players);
+            db.ref(`rooms/${roomCode}`).set({
+                secretWord: initialWord,
+                masterUid: myUid,
+                masterName: myNickname,
+                round: 1,
+                players: {
+                    [myUid]: { nickname: myNickname, guesses: [], completed: false }
                 }
-
-            }, (err) => {
-                console.error("Room snapshot error:", err);
+            }).then(() => {
+                closeLobbyModal();
+                enterRoomMode(roomCode, initialWord, true);
+                showToast("대결 방이 생성되었습니다!");
             });
         }
 
-        // Render Live Mini Spectator Boards for Host
-        function renderSpectatorBoards(players) {
-            spectatorBoardsEl.innerHTML = '';
-            Object.entries(players).forEach(([pId, pData]) => {
-                if (pId === hostUserId) return; // Exclude host itself
+        function joinRoom() {
+            const nick = document.getElementById('nicknameInput').value.trim();
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
+            if (roomCode.length !== 6) { alert("올바른 6자리 방 코드를 입력해주세요!"); return; }
+            myNickname = nick;
+            currentRoomCode = roomCode;
 
-                const pCard = document.createElement('div');
-                pCard.className = 'bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col items-center gap-2';
+            db.ref(`rooms/${roomCode}`).once('value', snapshot => {
+                const room = snapshot.val();
+                if (!room) { alert("존재하지 않는 방입니다."); return; }
 
-                const winBadge = pData.isWin ? '<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">🎉 성공</span>' : '';
+                isMaster = (room.masterUid === myUid);
+                db.ref(`rooms/${roomCode}/players/${myUid}`).set({
+                    nickname: myNickname, guesses: [], completed: false
+                });
+
+                closeLobbyModal();
+                enterRoomMode(roomCode, room.secretWord, isMaster);
+                showToast("방에 입장했습니다!");
+            });
+        }
+
+        function enterRoomMode(roomCode, word, masterStatus) {
+            secretWord = word;
+            isMaster = masterStatus;
+            document.getElementById('gameModeBadge').textContent = "대결 모드";
+            document.getElementById('multiplayerInfo').classList.remove('hidden');
+            document.getElementById('dispRoomCode').textContent = roomCode;
+            
+            if (isMaster) {
+                document.getElementById('wordSetterBox').classList.remove('hidden');
+                document.getElementById('spectatorDashboard').classList.remove('hidden');
+                document.getElementById('masterNotice').classList.remove('hidden');
+                document.getElementById('dispMaster').textContent = `${myNickname} (나)`;
+            } else {
+                document.getElementById('wordSetterBox').classList.add('hidden');
+                document.getElementById('spectatorDashboard').classList.add('hidden');
+                document.getElementById('masterNotice').classList.add('hidden');
+            }
+
+            // 실시간 방 데이터 수신
+            if (roomDataListener) db.ref(`rooms/${currentRoomCode}`).off('value', roomDataListener);
+            roomDataListener = db.ref(`rooms/${currentRoomCode}`).on('value', snapshot => {
+                const data = snapshot.val();
+                if (!data) return;
+                secretWord = data.secretWord;
+                isMaster = (data.masterUid === myUid);
+                document.getElementById('dispMaster').textContent = data.masterName || "알 수 없음";
+
+                if (isMaster) {
+                    document.getElementById('wordSetterBox').classList.remove('hidden');
+                    document.getElementById('spectatorDashboard').classList.remove('hidden');
+                    document.getElementById('masterNotice').classList.remove('hidden');
+                } else {
+                    document.getElementById('wordSetterBox').classList.add('hidden');
+                    document.getElementById('spectatorDashboard').classList.add('hidden');
+                    document.getElementById('masterNotice').classList.add('hidden');
+                }
+
+                // 관전 보드 업데이트
+                if (isMaster && data.players) {
+                    updateSpectatorBoard(data.players);
+                }
+            });
+
+            resetGameData();
+        }
+
+        function setSecretWord() {
+            const val = document.getElementById('customWordInput').value.trim();
+            if (val.length !== 5) { alert("5자모 단어를 정확히 입력해주세요!"); return; }
+            db.ref(`rooms/${currentRoomCode}`).update({ secretWord: val });
+            showToast("정답 단어가 설정되었습니다!");
+            document.getElementById('customWordInput').value = "";
+        }
+
+        function updateSpectatorBoard(players) {
+            const listEl = document.getElementById('playerStatusList');
+            listEl.innerHTML = '';
+            for (const [uid, p] of Object.entries(players)) {
+                if (uid === myUid) continue; // 본인 제외
+                const div = document.createElement('div');
+                div.className = 'bg-white p-2 rounded-lg border border-slate-100 flex items-center justify-between text-xs';
                 
-                let miniGridHtml = '<div class="grid grid-rows-6 gap-1 my-1">';
-                const pGuesses = pData.guesses || Array(6).fill(null).map(() => Array(5).fill(''));
-                const pStatuses = pData.guessStatuses || Array(6).fill(null).map(() => Array(5).fill(''));
-
-                for (let r = 0; r < 6; r++) {
-                    miniGridHtml += '<div class="grid grid-cols-5 gap-1">';
-                    for (let c = 0; c < 5; c++) {
-                        const letter = pGuesses[r]?.[c] || '';
-                        const status = pStatuses[r]?.[c] || '';
-                        
-                        let bgClass = 'bg-slate-100 border-slate-200 text-slate-800';
-                        if (status === 'correct') bgClass = 'bg-emerald-500 text-white font-bold';
-                        else if (status === 'present') bgClass = 'bg-amber-400 text-white font-bold';
-                        else if (status === 'absent') bgClass = 'bg-slate-400 text-white';
-
-                        miniGridHtml += `<div class="w-6 h-6 sm:w-7 sm:h-7 rounded flex items-center justify-center text-xs border ${bgClass}">${letter}</div>`;
+                let miniGridHtml = '<div class="flex space-x-1">';
+                const pGuesses = p.guesses || [];
+                for (let i = 0; i < 6; i++) {
+                    const g = pGuesses[i] || "";
+                    let colorClass = 'bg-slate-100 border border-slate-200';
+                    if (g) {
+                        if (g === secretWord) colorClass = 'bg-emerald-400';
+                        else colorClass = 'bg-amber-400';
                     }
-                    miniGridHtml += '</div>';
+                    miniGridHtml += `<div class="w-4 h-4 rounded ${colorClass}"></div>`;
                 }
                 miniGridHtml += '</div>';
 
-                pCard.innerHTML = `
-                    <div class="w-full flex items-center justify-between border-b pb-1.5 border-slate-100">
-                        <span class="font-bold text-slate-800 text-sm">${pData.name}</span>
-                        ${winBadge}
-                    </div>
-                    ${miniGridHtml}
-                    <div class="text-xs text-slate-500">시도 횟수: <span class="font-bold text-indigo-600">${pData.attempts || 0}</span> / 6</div>
-                `;
-                spectatorBoardsEl.appendChild(pCard);
-            });
-        }
-
-        // Render Opponents Status Bar for Solvers
-        function renderOpponentsStatus(players) {
-            opponentsContainer.innerHTML = '';
-            Object.entries(players).forEach(([pId, pData]) => {
-                if (pId === userId || pId === hostUserId) return; // Skip self and host
-
-                const oppCard = document.createElement('div');
-                oppCard.className = 'bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-sm';
-                
-                const winBadge = pData.isWin ? '<span class="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">성공</span>' : '';
-                
-                oppCard.innerHTML = `
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-bold text-slate-700 truncate">${pData.name}</span>
-                        ${winBadge}
-                    </div>
-                    <div class="text-xs text-slate-500">
-                        시도: <span class="font-bold text-indigo-600">${pData.attempts || 0}</span> / 6
-                    </div>
-                `;
-                opponentsContainer.appendChild(oppCard);
-            });
-        }
-
-        // Sync Current Player Progress to Firebase
-        async function syncPlayerProgress(attempts, isWin, currentGuesses, currentStatuses) {
-            if (!currentRoomCode || !userId) return;
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomCode);
-            try {
-                await updateDoc(roomRef, {
-                    [`players.${userId}.attempts`]: attempts,
-                    [`players.${userId}.isWin`]: isWin,
-                    [`players.${userId}.guesses`]: currentGuesses,
-                    [`players.${userId}.guessStatuses`]: currentStatuses,
-                    [`players.${userId}.updatedAt`]: Date.now()
-                });
-            } catch (err) {
-                console.error("Sync progress error:", err);
+                div.innerHTML = `<span class="font-bold text-slate-700">${p.nickname}</span> ${miniGridHtml}`;
+                listEl.appendChild(div);
             }
         }
 
-        // Copy Room Code Button
-        document.getElementById('btn-copy-code').addEventListener('click', () => {
-            if (!currentRoomCode) return;
-            const tempInput = document.createElement('input');
-            tempInput.value = currentRoomCode;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
-            showToast('방 코드가 클립보드에 복사되었습니다!');
-        });
+        function showGameOverModal(title, desc) {
+            document.getElementById('gameOverTitle').textContent = title;
+            document.getElementById('gameOverDesc').textContent = desc;
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
 
-        // Initialize Local Game
+        function nextRound() {
+            document.getElementById('gameOverModal').classList.add('hidden');
+            if (currentRoomCode) {
+                // 다음 라운드 및 출제자 순환 로직 처리
+                db.ref(`rooms/${currentRoomCode}`).once('value', snapshot => {
+                    const data = snapshot.val();
+                    const players = Object.keys(data.players || {});
+                    const currentIndex = players.indexOf(data.masterUid);
+                    const nextMasterUid = players[(currentIndex + 1) % players.length];
+                    const nextMasterName = data.players[nextMasterUid].nickname;
+
+                    const newWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+                    db.ref(`rooms/${currentRoomCode}`).update({
+                        secretWord: newWord,
+                        masterUid: nextMasterUid,
+                        masterName: nextMasterName,
+                        round: (data.round || 1) + 1
+                    });
+                    resetGameData();
+                });
+            } else {
+                resetGameData();
+            }
+        }
+
+        function resetGameData() {
+            currentGuess = "";
+            guesses = [""];
+            isGameOver = false;
+            initBoard();
+        }
+
+        // 초기화
         initBoard();
-        setupKeyboardButtons();
-        lucide.createIcons();
+        guesses = [""];
     </script>
 </body>
 </html>
