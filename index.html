@@ -68,9 +68,9 @@
         <!-- 메인 게임 보드 (5행 5열) -->
         <div id="board" class="grid grid-rows-5 gap-2 my-auto"></div>
 
-        <!-- 출제자 관전 대시보드 -->
+        <!-- 실시간 관전 대시보드 -->
         <div id="spectatorDashboard" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 hidden max-h-48 overflow-y-auto">
-            <p class="text-xs font-bold text-slate-700 mb-2">👁️ 실시간 참가자 현황 관전 보드 (총 5회 시도)</p>
+            <p id="spectatorTitle" class="text-xs font-bold text-slate-700 mb-2">👁️ 실시간 참가자 현황 관전 보드</p>
             <div id="playerStatusList" class="space-y-2"></div>
         </div>
 
@@ -135,12 +135,12 @@
         </div>
     </div>
 
-    <!-- 게임 종료 팝업 -->
+    <!-- 라운드 결과지 모달 -->
     <div id="gameOverModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
-            <h3 id="gameOverTitle" class="text-2xl font-black mb-2 text-slate-800">게임 종료!</h3>
-            <p id="gameOverDesc" class="text-slate-600 text-sm mb-6">정답을 맞췄습니다!</p>
-            <button onclick="nextRound()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-sm">다음 라운드 진행</button>
+            <h3 id="gameOverTitle" class="text-2xl font-black mb-2 text-slate-800">라운드 결과</h3>
+            <div id="gameOverDesc" class="text-slate-600 text-sm mb-6"></div>
+            <div id="gameOverActionContainer"></div>
         </div>
     </div>
 
@@ -166,12 +166,13 @@
             localStorage.setItem('wordle_uid', myUid);
         }
 
-        const WORDS = ["ㅊㅗㅅㅜㄴ", "ㅎㅏㄴㄱㅡ", "ㅂㅏㄷㅏㅁ", "ㅅㅏㄹㅏㅇ", "ㄱㅗㅇㅂㅜ", "ㄴㅗㅌㅡㅂ", "ㅋㅗㅍㅣㄴ"];
         let secretWord = "";
         let currentGuess = "";
         let submittedGuesses = [];
         const maxGuesses = 5;
         let isGameOver = false;
+        let isResultsShown = false;
+        let solvedTimestamp = null; // 정답 맞힌 시간 저장
 
         // 출제자 전용 상태
         let makerWord = "";
@@ -200,7 +201,6 @@
         }
 
         function renderBoard() {
-            // 출제자 화면 렌더링 (첫째 줄에 문제 작성)
             if (isMaster) {
                 for (let i = 0; i < maxGuesses; i++) {
                     for (let j = 0; j < 5; j++) {
@@ -217,347 +217,3 @@
                     }
                 }
                 return;
-            }
-
-            // 일반 참가자 화면 렌더링
-            for (let i = 0; i < maxGuesses; i++) {
-                const isSubmitted = i < submittedGuesses.length;
-                const guess = isSubmitted ? submittedGuesses[i] : (i === submittedGuesses.length ? currentGuess : "");
-
-                for (let j = 0; j < 5; j++) {
-                    const tile = document.getElementById(`tile-${i}-${j}`);
-                    const char = guess[j] || "";
-                    tile.textContent = char;
-                    tile.className = 'tile';
-                    if (char) tile.classList.add('filled');
-
-                    if (isSubmitted) {
-                        const targetChars = secretWord.split('');
-                        const guessChars = guess.split('');
-                        if (guessChars[j] === targetChars[j]) {
-                            tile.classList.add('correct');
-                        } else if (targetChars.includes(guessChars[j])) {
-                            tile.classList.add('present');
-                        } else {
-                            tile.classList.add('absent');
-                        }
-                    }
-                }
-            }
-            updateKeyboardColors();
-            
-            if (currentRoomCode) {
-                db.ref(`rooms/${currentRoomCode}/players/${myUid}`).update({
-                    nickname: myNickname,
-                    guesses: submittedGuesses,
-                    completed: submittedGuesses.includes(secretWord) || submittedGuesses.length >= maxGuesses
-                });
-            }
-        }
-
-        function updateKeyboardColors() {
-            if (isMaster) return;
-            const keyElements = document.querySelectorAll('.key');
-            keyElements.forEach(key => {
-                const char = key.textContent.trim();
-                if (char.length !== 1) return;
-                
-                let status = 0;
-                submittedGuesses.forEach(guess => {
-                    for (let j = 0; j < 5; j++) {
-                        if (guess[j] === char) {
-                            if (secretWord[j] === char) status = Math.max(status, 3);
-                            else if (secretWord.includes(char)) status = Math.max(status, 2);
-                            else status = Math.max(status, 1);
-                        }
-                    }
-                });
-
-                key.className = 'key flex-1 py-3';
-                if (status === 3) key.classList.add('correct');
-                else if (status === 2) key.classList.add('present');
-                else if (status === 1) key.classList.add('absent');
-            });
-        }
-
-        function handleKey(char) {
-            // 출제자일 때: 첫 번째 줄 타일에 자모 입력
-            if (isMaster) {
-                if (hasMasterSetWord) return; // 이미 출제 완료한 경우
-                if (makerWord.length < 5) {
-                    makerWord += char;
-                    renderBoard();
-                }
-                return;
-            }
-
-            // 참가자일 때
-            if (isGameOver) return;
-            if (submittedGuesses.length >= maxGuesses) return;
-            if (currentGuess.length < 5) {
-                currentGuess += char;
-                renderBoard();
-            }
-        }
-
-        function handleDelete() {
-            // 출제자일 때: 입력중인 자모 지우기
-            if (isMaster) {
-                if (hasMasterSetWord) return;
-                if (makerWord.length > 0) {
-                    makerWord = makerWord.slice(0, -1);
-                    renderBoard();
-                }
-                return;
-            }
-
-            // 참가자일 때
-            if (isGameOver) return;
-            if (currentGuess.length > 0) {
-                currentGuess = currentGuess.slice(0, -1);
-                renderBoard();
-            }
-        }
-
-        function handleSubmit() {
-            // 출제자의 제출 처리 (문제 출제 버튼 역할)
-            if (isMaster) {
-                if (hasMasterSetWord) {
-                    showToast("이미 출제가 완료되었습니다!");
-                    return;
-                }
-                if (makerWord.length !== 5) {
-                    showToast("첫번째 줄에 5자모를 모두 채워주세요!");
-                    return;
-                }
-                db.ref(`rooms/${currentRoomCode}`).update({ secretWord: makerWord });
-                hasMasterSetWord = true;
-                showToast("🎯 문제가 출제되었습니다!");
-                toggleMasterUI();
-                renderBoard();
-                return;
-            }
-
-            // 참가자의 제출 처리
-            if (isGameOver) return;
-            if (submittedGuesses.length >= maxGuesses) return;
-
-            if (!secretWord) {
-                showToast("출제자가 아직 문제를 출제하지 않았습니다!");
-                return;
-            }
-
-            if (currentGuess.length !== 5) {
-                showToast("5자모를 모두 입력한 뒤 제출해주세요!");
-                return;
-            }
-
-            const newGuess = currentGuess;
-            submittedGuesses.push(newGuess);
-            currentGuess = "";
-            renderBoard();
-
-            if (newGuess === secretWord) {
-                isGameOver = true;
-                showGameOverModal("정답입니다! 🎉", `시도 횟수: ${submittedGuesses.length} / ${maxGuesses}회`);
-            } else if (submittedGuesses.length >= maxGuesses) {
-                isGameOver = true;
-                showGameOverModal("게임 오버 😢", `정답은 [ ${secretWord} ] 입니다.`);
-            } else {
-                showToast(`${submittedGuesses.length}번째 시도 완료! 다음 단어를 입력하세요.`);
-            }
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.classList.remove('opacity-0');
-            setTimeout(() => toast.classList.add('opacity-0'), 2000);
-        }
-
-        // --- 멀티플레이 로직 ---
-        function openLobbyModal() {
-            document.getElementById('lobbyModal').classList.remove('hidden');
-        }
-        function closeLobbyModal() {
-            document.getElementById('lobbyModal').classList.add('hidden');
-        }
-        function showJoinInput() {
-            document.getElementById('joinCodeArea').classList.remove('hidden');
-        }
-
-        function createRoom() {
-            const nick = document.getElementById('nicknameInput').value.trim();
-            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
-            myNickname = nick;
-
-            const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
-            currentRoomCode = roomCode;
-            isMaster = true;
-
-            db.ref(`rooms/${roomCode}`).set({
-                secretWord: "",
-                masterUid: myUid,
-                masterName: myNickname,
-                round: 1,
-                players: {
-                    [myUid]: { nickname: myNickname, guesses: [], completed: false }
-                }
-            }).then(() => {
-                closeLobbyModal();
-                enterRoomMode(roomCode, "", true);
-                showToast("대결 방이 생성되었습니다!");
-            });
-        }
-
-        function joinRoom() {
-            const nick = document.getElementById('nicknameInput').value.trim();
-            const roomCode = document.getElementById('roomCodeInput').value.trim();
-            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
-            if (roomCode.length !== 6) { alert("올바른 6자리 방 코드를 입력해주세요!"); return; }
-            myNickname = nick;
-            currentRoomCode = roomCode;
-
-            db.ref(`rooms/${roomCode}`).once('value', snapshot => {
-                const room = snapshot.val();
-                if (!room) { alert("존재하지 않는 방입니다."); return; }
-
-                isMaster = (room.masterUid === myUid);
-                db.ref(`rooms/${roomCode}/players/${myUid}`).set({
-                    nickname: myNickname, guesses: [], completed: false
-                });
-
-                closeLobbyModal();
-                enterRoomMode(roomCode, room.secretWord || "", isMaster);
-                showToast("방에 입장했습니다!");
-            });
-        }
-
-        function enterRoomMode(roomCode, word, masterStatus) {
-            secretWord = word;
-            isMaster = masterStatus;
-            document.getElementById('gameModeBadge').textContent = "대결 모드";
-            document.getElementById('multiplayerInfo').classList.remove('hidden');
-            document.getElementById('dispRoomCode').textContent = roomCode;
-            
-            toggleMasterUI();
-
-            if (roomDataListener) db.ref(`rooms/${currentRoomCode}`).off('value', roomDataListener);
-            roomDataListener = db.ref(`rooms/${currentRoomCode}`).on('value', snapshot => {
-                const data = snapshot.val();
-                if (!data) return;
-                
-                if (secretWord !== data.secretWord) {
-                    secretWord = data.secretWord;
-                    if (secretWord) hasMasterSetWord = true;
-                    if (!isMaster) resetGameData();
-                }
-
-                isMaster = (data.masterUid === myUid);
-                document.getElementById('dispMaster').textContent = data.masterName || "알 수 없음";
-
-                toggleMasterUI();
-
-                if (isMaster && data.players) {
-                    updateSpectatorBoard(data.players);
-                }
-            });
-
-            resetGameData();
-        }
-
-        function toggleMasterUI() {
-            const submitBtn = document.getElementById('submitBtn');
-            const noticeEl = document.getElementById('masterNotice');
-
-            if (isMaster) {
-                document.getElementById('spectatorDashboard').classList.remove('hidden');
-                noticeEl.classList.remove('hidden');
-                submitBtn.textContent = hasMasterSetWord ? "출제완료" : "문제 출제";
-                submitBtn.className = hasMasterSetWord 
-                    ? "key flex-[2] py-3 bg-slate-400 text-white font-bold pointer-events-none" 
-                    : "key flex-[2] py-3 bg-amber-600 text-white font-bold";
-
-                if (hasMasterSetWord) {
-                    noticeEl.textContent = "🎯 정답 출제 완료! 참가자들의 제출을 기다리는 중...";
-                } else {
-                    noticeEl.textContent = "🎯 첫 번째 줄 타일에 5자모를 입력하고 [문제 출제] 버튼을 누르세요!";
-                }
-            } else {
-                document.getElementById('spectatorDashboard').classList.add('hidden');
-                noticeEl.classList.add('hidden');
-                submitBtn.textContent = "제출";
-                submitBtn.className = "key flex-[2] py-3 bg-emerald-600 text-white font-bold";
-            }
-        }
-
-        function updateSpectatorBoard(players) {
-            const listEl = document.getElementById('playerStatusList');
-            listEl.innerHTML = '';
-            for (const [uid, p] of Object.entries(players)) {
-                if (uid === myUid) continue;
-                const div = document.createElement('div');
-                div.className = 'bg-white p-2 rounded-lg border border-slate-100 flex items-center justify-between text-xs';
-                
-                let miniGridHtml = '<div class="flex space-x-1">';
-                const pGuesses = p.guesses || [];
-                for (let i = 0; i < maxGuesses; i++) {
-                    const g = pGuesses[i] || "";
-                    let colorClass = 'bg-slate-100 border border-slate-200';
-                    if (g) {
-                        if (g === secretWord) colorClass = 'bg-emerald-400';
-                        else colorClass = 'bg-amber-400';
-                    }
-                    miniGridHtml += `<div class="w-4 h-4 rounded ${colorClass}"></div>`;
-                }
-                miniGridHtml += '</div>';
-
-                div.innerHTML = `<span class="font-bold text-slate-700">${p.nickname}</span> ${miniGridHtml}`;
-                listEl.appendChild(div);
-            }
-        }
-
-        function showGameOverModal(title, desc) {
-            document.getElementById('gameOverTitle').textContent = title;
-            document.getElementById('gameOverDesc').textContent = desc;
-            document.getElementById('gameOverModal').classList.remove('hidden');
-        }
-
-        function nextRound() {
-            document.getElementById('gameOverModal').classList.add('hidden');
-            if (currentRoomCode) {
-                db.ref(`rooms/${currentRoomCode}`).once('value', snapshot => {
-                    const data = snapshot.val();
-                    const players = Object.keys(data.players || {});
-                    const currentIndex = players.indexOf(data.masterUid);
-                    const nextMasterUid = players[(currentIndex + 1) % players.length];
-                    const nextMasterName = data.players[nextMasterUid].nickname;
-
-                    db.ref(`rooms/${currentRoomCode}`).update({
-                        secretWord: "",
-                        masterUid: nextMasterUid,
-                        masterName: nextMasterName,
-                        round: (data.round || 1) + 1
-                    });
-                    resetGameData();
-                });
-            } else {
-                resetGameData();
-            }
-        }
-
-        function resetGameData() {
-            currentGuess = "";
-            submittedGuesses = [];
-            isGameOver = false;
-            makerWord = "";
-            hasMasterSetWord = false;
-            initBoard();
-            renderBoard();
-        }
-
-        // 초기화
-        initBoard();
-    </script>
-</body>
-</html>
