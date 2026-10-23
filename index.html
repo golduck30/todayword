@@ -34,7 +34,7 @@
         .key.correct { background-color: #4ade80 !important; color: white !important; }
         .key.present { background-color: #facc15 !important; color: white !important; }
         .key.absent { background-color: #94a3b8 !important; color: white !important; }
-    </style>
+    button:disabled {opacity:.45;cursor:not-allowed} main{gap:8px} .tile{width:clamp(42px,12vw,52px);height:clamp(42px,12vw,52px)} </style>
 </head>
 <body class="flex flex-col min-h-screen text-slate-800">
 
@@ -43,7 +43,7 @@
         <div class="flex items-center space-x-2">
             <span class="px-2 py-1 bg-emerald-500 text-white font-black rounded text-lg tracking-wider">단</span>
             <h1 class="text-xl font-bold tracking-tight">오늘의 단어</h1>
-            <span id="gameModeBadge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">혼자 하기</span>
+            <span id="gameModeBadge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">친구와 대결</span>
         </div>
         <div class="flex items-center space-x-2">
             <button onclick="openLobbyModal()" class="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
@@ -65,7 +65,7 @@
             <div id="masterNotice" class="text-xs text-amber-700 mt-1 font-medium hidden">🎯 첫 번째 줄 타일에 5자모를 입력하고 [문제 출제] 버튼을 누르세요!</div>
         </div>
 
-        <!-- 메인 게임 보드 (5행 5열) -->
+        <div class="w-full text-center mb-4"><p id="connection" class="text-xs text-slate-500"></p><p id="statusText" class="text-sm font-semibold my-3"></p><button id="leaveBtn" onclick="leaveRoom()" class="hidden text-xs underline">방 나가기</button></div>
         <div id="board" class="grid grid-rows-5 gap-2 my-auto"></div>
 
         <!-- 출제자 관전 대시보드 -->
@@ -74,42 +74,8 @@
             <div id="playerStatusList" class="space-y-2"></div>
         </div>
 
-        <!-- 키보드 영역 -->
-        <div id="keyboard" class="w-full space-y-1.5 pb-2">
-            <div class="flex justify-center space-x-1.5">
-                <div class="key flex-1 py-3" onclick="handleKey('ㅂ')">ㅂ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅈ')">ㅈ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㄷ')">ㄷ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㄱ')">ㄱ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅅ')">ㅅ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅛ')">ㅛ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅕ')">ㅕ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅑ')">ㅑ</div>
-                <div class="key flex-1 py-3 bg-slate-300" onclick="handleDelete()"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"></path></svg></div>
-            </div>
-            <div class="flex justify-center space-x-1.5 px-2">
-                <div class="key flex-1 py-3" onclick="handleKey('ㅁ')">ㅁ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㄴ')">ㄴ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅇ')">ㅇ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㄹ')">ㄹ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅎ')">ㅎ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅗ')">ㅗ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅓ')">ㅓ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅏ')">ㅏ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅣ')">ㅣ</div>
-            </div>
-            <div class="flex justify-center space-x-1.5">
-                <div class="key flex-1 py-3" onclick="handleKey('ㅋ')">ㅋ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅌ')">ㅌ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅊ')">ㅊ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅍ')">ㅍ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅠ')">ㅠ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅜ')">ㅜ</div>
-                <div class="key flex-1 py-3" onclick="handleKey('ㅡ')">ㅡ</div>
-                <div id="submitBtn" class="key flex-[2] py-3 bg-emerald-600 text-white font-bold" onclick="handleSubmit()">제출</div>
-            </div>
-        </div>
-    </main>
+        <div id="results" class="w-full my-3 p-2"></div><button id="giveup" onclick="giveUp()" class="hidden text-xs underline mb-3">이번 라운드 포기</button><!-- 키보드 영역 -->
+<div id="keyboard" style="width:100%;margin-top:18px"><div style="display:flex;gap:4px;margin:5px 0"><button class="key" data-char="ㅂ" onclick="handleKey('ㅂ')" style="flex:1;padding:12px 0;min-width:0">ㅂ</button><button class="key" data-char="ㅈ" onclick="handleKey('ㅈ')" style="flex:1;padding:12px 0;min-width:0">ㅈ</button><button class="key" data-char="ㄷ" onclick="handleKey('ㄷ')" style="flex:1;padding:12px 0;min-width:0">ㄷ</button><button class="key" data-char="ㄱ" onclick="handleKey('ㄱ')" style="flex:1;padding:12px 0;min-width:0">ㄱ</button><button class="key" data-char="ㅅ" onclick="handleKey('ㅅ')" style="flex:1;padding:12px 0;min-width:0">ㅅ</button><button class="key" data-char="ㅛ" onclick="handleKey('ㅛ')" style="flex:1;padding:12px 0;min-width:0">ㅛ</button><button class="key" data-char="ㅕ" onclick="handleKey('ㅕ')" style="flex:1;padding:12px 0;min-width:0">ㅕ</button><button class="key" data-char="ㅑ" onclick="handleKey('ㅑ')" style="flex:1;padding:12px 0;min-width:0">ㅑ</button></div><div style="display:flex;gap:4px;margin:5px 0"><button class="key" data-char="ㅁ" onclick="handleKey('ㅁ')" style="flex:1;padding:12px 0;min-width:0">ㅁ</button><button class="key" data-char="ㄴ" onclick="handleKey('ㄴ')" style="flex:1;padding:12px 0;min-width:0">ㄴ</button><button class="key" data-char="ㅇ" onclick="handleKey('ㅇ')" style="flex:1;padding:12px 0;min-width:0">ㅇ</button><button class="key" data-char="ㄹ" onclick="handleKey('ㄹ')" style="flex:1;padding:12px 0;min-width:0">ㄹ</button><button class="key" data-char="ㅎ" onclick="handleKey('ㅎ')" style="flex:1;padding:12px 0;min-width:0">ㅎ</button><button class="key" data-char="ㅗ" onclick="handleKey('ㅗ')" style="flex:1;padding:12px 0;min-width:0">ㅗ</button><button class="key" data-char="ㅓ" onclick="handleKey('ㅓ')" style="flex:1;padding:12px 0;min-width:0">ㅓ</button><button class="key" data-char="ㅏ" onclick="handleKey('ㅏ')" style="flex:1;padding:12px 0;min-width:0">ㅏ</button><button class="key" data-char="ㅣ" onclick="handleKey('ㅣ')" style="flex:1;padding:12px 0;min-width:0">ㅣ</button></div><div style="display:flex;gap:4px;margin:5px 0"><button class="key" data-char="ㅋ" onclick="handleKey('ㅋ')" style="flex:1;padding:12px 0;min-width:0">ㅋ</button><button class="key" data-char="ㅌ" onclick="handleKey('ㅌ')" style="flex:1;padding:12px 0;min-width:0">ㅌ</button><button class="key" data-char="ㅊ" onclick="handleKey('ㅊ')" style="flex:1;padding:12px 0;min-width:0">ㅊ</button><button class="key" data-char="ㅍ" onclick="handleKey('ㅍ')" style="flex:1;padding:12px 0;min-width:0">ㅍ</button><button class="key" data-char="ㅠ" onclick="handleKey('ㅠ')" style="flex:1;padding:12px 0;min-width:0">ㅠ</button><button class="key" data-char="ㅜ" onclick="handleKey('ㅜ')" style="flex:1;padding:12px 0;min-width:0">ㅜ</button><button class="key" data-char="ㅡ" onclick="handleKey('ㅡ')" style="flex:1;padding:12px 0;min-width:0">ㅡ</button></div><div style="display:flex;gap:4px;margin:5px 0"><button class="key" data-char="ㄲ" onclick="handleKey('ㄲ')" style="flex:1;padding:12px 0;min-width:0">ㄲ</button><button class="key" data-char="ㄸ" onclick="handleKey('ㄸ')" style="flex:1;padding:12px 0;min-width:0">ㄸ</button><button class="key" data-char="ㅃ" onclick="handleKey('ㅃ')" style="flex:1;padding:12px 0;min-width:0">ㅃ</button><button class="key" data-char="ㅆ" onclick="handleKey('ㅆ')" style="flex:1;padding:12px 0;min-width:0">ㅆ</button><button class="key" data-char="ㅉ" onclick="handleKey('ㅉ')" style="flex:1;padding:12px 0;min-width:0">ㅉ</button><button class="key" data-char="ㅐ" onclick="handleKey('ㅐ')" style="flex:1;padding:12px 0;min-width:0">ㅐ</button><button class="key" data-char="ㅔ" onclick="handleKey('ㅔ')" style="flex:1;padding:12px 0;min-width:0">ㅔ</button><button class="key" data-char="ㅒ" onclick="handleKey('ㅒ')" style="flex:1;padding:12px 0;min-width:0">ㅒ</button><button class="key" data-char="ㅖ" onclick="handleKey('ㅖ')" style="flex:1;padding:12px 0;min-width:0">ㅖ</button></div><div style="display:flex;gap:4px;margin:5px 0"><button class="key" data-char="ㅘ" onclick="handleKey('ㅘ')" style="flex:1;padding:12px 0;min-width:0">ㅘ</button><button class="key" data-char="ㅙ" onclick="handleKey('ㅙ')" style="flex:1;padding:12px 0;min-width:0">ㅙ</button><button class="key" data-char="ㅚ" onclick="handleKey('ㅚ')" style="flex:1;padding:12px 0;min-width:0">ㅚ</button><button class="key" data-char="ㅝ" onclick="handleKey('ㅝ')" style="flex:1;padding:12px 0;min-width:0">ㅝ</button><button class="key" data-char="ㅞ" onclick="handleKey('ㅞ')" style="flex:1;padding:12px 0;min-width:0">ㅞ</button><button class="key" data-char="ㅟ" onclick="handleKey('ㅟ')" style="flex:1;padding:12px 0;min-width:0">ㅟ</button><button class="key" data-char="ㅢ" onclick="handleKey('ㅢ')" style="flex:1;padding:12px 0;min-width:0">ㅢ</button></div><div style="display:flex;gap:4px;margin:5px 0"><button class="key" data-char="ㄳ" onclick="handleKey('ㄳ')" style="flex:1;padding:12px 0;min-width:0">ㄳ</button><button class="key" data-char="ㄵ" onclick="handleKey('ㄵ')" style="flex:1;padding:12px 0;min-width:0">ㄵ</button><button class="key" data-char="ㄶ" onclick="handleKey('ㄶ')" style="flex:1;padding:12px 0;min-width:0">ㄶ</button><button class="key" data-char="ㄺ" onclick="handleKey('ㄺ')" style="flex:1;padding:12px 0;min-width:0">ㄺ</button><button class="key" data-char="ㄻ" onclick="handleKey('ㄻ')" style="flex:1;padding:12px 0;min-width:0">ㄻ</button><button class="key" data-char="ㄼ" onclick="handleKey('ㄼ')" style="flex:1;padding:12px 0;min-width:0">ㄼ</button><button class="key" data-char="ㄽ" onclick="handleKey('ㄽ')" style="flex:1;padding:12px 0;min-width:0">ㄽ</button><button class="key" data-char="ㄾ" onclick="handleKey('ㄾ')" style="flex:1;padding:12px 0;min-width:0">ㄾ</button><button class="key" data-char="ㄿ" onclick="handleKey('ㄿ')" style="flex:1;padding:12px 0;min-width:0">ㄿ</button><button class="key" data-char="ㅀ" onclick="handleKey('ㅀ')" style="flex:1;padding:12px 0;min-width:0">ㅀ</button><button class="key" data-char="ㅄ" onclick="handleKey('ㅄ')" style="flex:1;padding:12px 0;min-width:0">ㅄ</button></div><div style="display:flex;gap:6px;margin-top:8px"><button id="deleteKey" class="key" style="flex:1;padding:14px" onclick="handleDelete()">지우기</button><button id="submitBtn" style="flex:2;background:#059669;color:white;border-radius:8px;font-weight:700" onclick="handleSubmit()">제출</button></div><p class="text-xs text-slate-500 mt-3 text-center">초록: 위치 일치 · 노랑: 다른 위치에 있음 · 회색: 없음<br>복합 자음·모음도 버튼 하나가 한 칸입니다.</p></div>    </main>
 
     <!-- 대결방 모달 -->
     <div id="lobbyModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
@@ -140,14 +106,14 @@
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
             <h3 id="gameOverTitle" class="text-2xl font-black mb-2 text-slate-800">게임 종료!</h3>
             <p id="gameOverDesc" class="text-slate-600 text-sm mb-6">정답을 맞췄습니다!</p>
-            <button onclick="nextRound()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-sm">다음 라운드 진행</button>
+            <button  class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-sm">다음 라운드 진행</button>
         </div>
     </div>
 
     <!-- 알림 토스트 -->
     <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-sm font-medium opacity-0 transition-opacity pointer-events-none z-50"></div>
 
-    <script>
+<script>
         const firebaseConfig = {
             apiKey: "AIzaSyBZmxJUr5oaZttF7oIYJSEBb5RgjVQjInY",
             authDomain: "cofirm-board.firebaseapp.com",
@@ -157,255 +123,154 @@
             messagingSenderId: "367825644618",
             appId: "1:367825644618:web:3f236c72c0d5347878ab3"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+const CHARS='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣㄳㄵㄶㄺㄻㄼㄽㄾㄿㅀㅄ';
+function score(guess,answer){
+ const marks=Array(5).fill('absent'), left={};
+ for(let i=0;i<5;i++)if(guess[i]===answer[i])marks[i]='correct';else left[answer[i]]=(left[answer[i]]||0)+1;
+ for(let i=0;i<5;i++)if(marks[i]!=='correct'&&left[guess[i]]>0){marks[i]='present';left[guess[i]]--;}
+ return marks;
+}
+function rankings(r){return Object.entries(r.contestants||{}).map(([id,p])=>({id,...p})).sort((a,b)=>Number(b.solved)-Number(a.solved)||(a.solved?(a.guesses.length-b.guesses.length||a.finishOrder-b.finishOrder):0));}
+function finish(r,now){if(r.phase==='playing'&&Object.values(r.contestants||{}).every(p=>p.done)){r.phase='results';r.endsAt=now;r.advanceAt=now+8000;}return r;}
+function transition(original,id,action,now){
+ if(!original)throw Error('방이 없습니다. 코드를 확인해주세요.');
+ const r=JSON.parse(JSON.stringify(original));r.players=r.players||{};
+ if(action.type==='join'){
+  if(!r.players[id]){r.order=(r.order||0)+1;r.players[id]={nickname:action.name,order:r.order};}
+  else r.players[id].nickname=action.name;
+  return r;
+ }
+ if(!r.players[id])throw Error('방에 먼저 참가해주세요.');
+ if(action.round!==r.round)throw Error('라운드가 바뀌었습니다. 다시 입력해주세요.');
+ if(action.type==='start'){
+  if(r.masterUid!==id||r.phase!=='setting')throw Error('현재 출제자만 출제할 수 있습니다.');
+  if(action.word.length!==5||[...action.word].some(c=>!CHARS.includes(c)))throw Error('자음·모음 5칸을 채워주세요.');
+  const ids=Object.keys(r.players).filter(x=>x!==id);if(!ids.length)throw Error('참가자가 한 명 이상 들어온 뒤 출제해주세요.');
+  r.secretWord=action.word;r.phase='playing';r.startedAt=now;r.sequence=0;r.contestants={};
+  ids.forEach(x=>r.contestants[x]={nickname:r.players[x].nickname,guesses:[],done:false,solved:false});return r;
+ }
+ if(action.type==='guess'||action.type==='giveup'){
+  const p=r.contestants?.[id];if(r.phase!=='playing'||!p||p.done)throw Error('지금은 제출할 수 없습니다.');
+  p.guesses=p.guesses||[];
+  if(action.type==='giveup'){p.done=true;p.gaveUp=true;return finish(r,now);}
+  if(p.guesses.length!==action.expected)throw Error('이미 제출된 입력입니다.');
+  if(action.word.length!==5||[...action.word].some(c=>!CHARS.includes(c)))throw Error('자음·모음 5칸을 채워주세요.');
+  p.guesses.push(action.word);r.sequence=(r.sequence||0)+1;
+  p.solved=action.word===r.secretWord;p.done=p.solved||p.guesses.length>=5;
+  if(p.solved){p.finishOrder=r.sequence;p.finishedAt=now;}
+  return finish(r,now);
+ }
+ if(action.type==='next'){
+  if(r.phase!=='results'||now<r.advanceAt)return;
+  const ids=Object.keys(r.players).sort((a,b)=>r.players[a].order-r.players[b].order),i=ids.indexOf(r.masterUid);
+  r.masterUid=ids[(i+1)%ids.length];r.round++;r.phase='setting';delete r.contestants;delete r.secretWord;delete r.advanceAt;return r;
+ }
+ if(action.type==='leave'){
+  if(r.contestants?.[id]&&!r.contestants[id].done){r.contestants[id].done=true;r.contestants[id].gaveUp=true;}
+  delete r.players[id];const ids=Object.keys(r.players).sort((a,b)=>r.players[a].order-r.players[b].order);
+  if(!ids.length)return null;
+  if(r.masterUid===id){r.masterUid=ids[0];if(r.phase==='setting'){delete r.secretWord;} }
+  return finish(r,now);
+ }
+ throw Error('알 수 없는 요청입니다.');
+}
+if(typeof module!=='undefined')module.exports={score,transition,rankings};
 
-        let myUid = localStorage.getItem('wordle_uid');
-        if (!myUid) {
-            myUid = 'user_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('wordle_uid', myUid);
-        }
+const $=id=>document.getElementById(id);
+let db=null, room=null, code=null, input='', busy=false, connected=false, offset=0, listener=null, oldRound=null;
+const storageKey='word_duel_v2_session';
+let session;try{session=JSON.parse(sessionStorage.getItem(storageKey)||'null')}catch{}
+session=session||{id:'p_'+crypto.randomUUID()};const uid=session.id;
+function persist(){sessionStorage.setItem(storageKey,JSON.stringify(session));}
+persist();
+function showToast(s){$('toast').textContent=s;$('toast').classList.remove('opacity-0');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').classList.add('opacity-0'),4000);}
+function error(e){showToast(e.code==='PERMISSION_DENIED'?'Firebase에서 접근을 거부했습니다. 데이터베이스 규칙 확인이 필요합니다.':e.message||String(e));}
+function openLobbyModal(){if(code){showToast('현재 방을 나간 뒤 다른 방에 참가할 수 있어요.');return;}$('lobbyModal').classList.remove('hidden');}
+function closeLobbyModal(){$('lobbyModal').classList.add('hidden');}
+function showJoinInput(){$('joinCodeArea').classList.remove('hidden');}
+function now(){return Date.now()+offset;}
+function ref(){return db.ref('wordDuelsV2/'+code);}
+async function transact(action){
+ if(!connected)throw Error('서버 연결을 기다려주세요.');
+ const target=ref();let failure;
+ const result=await target.transaction(value=>{failure=null;try{return transition(value,uid,action,now());}catch(e){failure=e;return;}},undefined,false);
+ if(failure)throw failure;return result;
+}
+function nickname(){const n=$('nicknameInput').value.trim();if(!n||n.length>16)throw Error('닉네임을 1~16자로 입력해주세요.');return n;}
+async function createRoom(){
+ if(busy)return;busy=true;
+ try{if(!db||!connected)throw Error('서버 연결을 기다려주세요.');const name=nickname();
+ for(let i=0;i<10;i++){const n=String(100000+crypto.getRandomValues(new Uint32Array(1))[0]%900000);
+ const result=await db.ref('wordDuelsV2/'+n).transaction(v=>v?undefined:{phase:'setting',round:1,masterUid:uid,order:1,players:{[uid]:{nickname:name,order:1}}},undefined,false);
+ if(result.committed){enter(n,name);return;}}
+ throw Error('방 생성에 실패했습니다. 다시 시도해주세요.');
+ }catch(e){error(e);}finally{busy=false;render();}
+}
+async function joinRoom(){
+ if(busy)return;busy=true;
+ try{if(!db||!connected)throw Error('서버 연결을 기다려주세요.');const name=nickname(),n=$('roomCodeInput').value.trim();if(!/^\d{6}$/.test(n))throw Error('6자리 방 코드를 입력해주세요.');
+ let fail;const result=await db.ref('wordDuelsV2/'+n).transaction(v=>{try{return transition(v,uid,{type:'join',name},now());}catch(e){fail=e;return;}},undefined,false);
+ if(!result.committed)throw fail||Error('방 참가에 실패했습니다.');enter(n,name);
+ }catch(e){error(e);}finally{busy=false;render();}
+}
+function enter(n,name){
+ if(listener&&code)ref().off('value',listener);code=n;session.code=n;session.name=name;persist();closeLobbyModal();
+ listener=snap=>{const value=snap.val();if(!value||!value.players?.[uid]){reset();showToast('방이 종료되었거나 참가 정보가 없습니다.');return;}
+ if(oldRound!==value.round||room?.phase!==value.phase){input='';oldRound=value.round;}room=value;
+ Object.values(room.contestants||{}).forEach(p=>p.guesses=p.guesses||[]);render();};ref().on('value',listener,error);
+}
+function reset(){if(listener&&code)ref().off('value',listener);code=null;room=null;input='';oldRound=null;delete session.code;persist();render();}
+async function leaveRoom(){if(!code)return;if(!confirm('방을 나갈까요? 진행 중인 도전은 포기 처리됩니다.'))return;try{await transact({type:'leave',round:room.round});reset();}catch(e){error(e);}}
+function canInput(){return connected&&!busy&&room&&(room.phase==='setting'?room.masterUid===uid:room.phase==='playing'&&room.contestants?.[uid]&&!room.contestants[uid].done);}
+function handleKey(c){if(canInput()&&input.length<5){input+=c;render();}}
+function handleDelete(){if(canInput()){input=input.slice(0,-1);render();}}
+async function handleSubmit(){
+ if(!canInput())return;if(input.length!==5){showToast('자음·모음 5칸을 모두 채워주세요.');return;}
+ const action={type:room.phase==='setting'?'start':'guess',round:room.round,word:input,expected:room.contestants?.[uid]?.guesses.length||0};
+ busy=true;render();try{await transact(action);input='';}catch(e){error(e);}finally{busy=false;render();}
+}
+async function giveUp(){if(!room||!confirm('이번 라운드를 포기할까요?'))return;try{await transact({type:'giveup',round:room.round});}catch(e){error(e);}}
+function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
+function render(){
+ $('gameModeBadge').textContent=room?'대결 모드':'친구와 대결';$('roomBtnText').textContent=code||'대결 방';
+ $('connection').textContent=connected?'● 서버 연결됨':'● 서버 연결 중 · 입력 대기';
+ $('multiplayerInfo').classList.toggle('hidden',!room);$('leaveBtn').classList.toggle('hidden',!room);
+ $('board').replaceChildren();$('playerStatusList').replaceChildren();$('gameOverModal').classList.add('hidden');
+ const maker=room?.masterUid===uid,p=room?.contestants?.[uid],guesses=p?.guesses||[];
+ let message='대결 방을 만들거나 6자리 코드로 참가하세요.';
+ if(room){$('dispRoomCode').textContent=code+' · '+room.round+'라운드';$('dispMaster').textContent=room.players[room.masterUid]?.nickname||'';
+ if(room.phase==='setting')message=maker?'자음·모음 5칸을 클릭하고 정답 제출을 누르세요.':'출제자가 문제를 준비하고 있어요.';
+ else if(room.phase==='playing')message=maker&&!p?'참가자들이 도전 중이에요.':!p?'이번 라운드는 관전 · 다음 라운드부터 참가해요.':p.done?(p.solved?'정답! 다른 참가자의 도전이 끝나면 순위가 확정돼요.':'도전 종료 · 다른 참가자를 기다려주세요.'):`총 5번의 기회 · ${guesses.length+1}번째 도전`;
+ else message='라운드 종료 · 잠시 후 다음 출제자로 넘어가요.';
+ }
+ $('statusText').textContent=message;$('masterNotice').classList.add('hidden');
+ const editing=maker&&room?.phase==='setting';const known=room?.secretWord||'';
+ for(let i=0;i<5;i++){const row=el('div','','grid grid-cols-5 gap-2');let word=guesses[i]||(i===guesses.length&&canInput()?input:'');
+ if(editing)word=i===0?input:'';else if(maker&&!p)word=i===0?known:'';
+ const marks=guesses[i]?score(guesses[i],known):[];
+ for(let j=0;j<5;j++)row.append(el('div',word[j]||'','tile '+(marks[j]||((editing||maker&&!p)&&i===0?'maker-input':''))));$('board').append(row);}
+ const colors={};guesses.forEach(g=>score(g,known).forEach((s,i)=>{const priority={absent:1,present:2,correct:3};if((priority[s]||0)>(priority[colors[g[i]]]||0))colors[g[i]]=s;}));
+ document.querySelectorAll('[data-char]').forEach(k=>{k.className='key '+(colors[k.dataset.char]||'');k.disabled=!canInput();});
+ $('submitBtn').textContent=busy?'저장 중…':editing?'정답 제출':'제출';$('submitBtn').disabled=!canInput();$('deleteKey').disabled=!canInput();
+ $('giveup').classList.toggle('hidden',!(room?.phase==='playing'&&p&&!p.done));
+ $('spectatorDashboard').classList.toggle('hidden',!room);
+ if(room)Object.entries(room.players).sort((a,b)=>a[1].order-b[1].order).forEach(([id,user])=>{
+ const player=room.contestants?.[id];let status=id===room.masterUid?'출제자':player?(player.solved?`${player.guesses.length}회 정답`:player.done?'도전 종료':`${player.guesses.length}/5회 도전`):room.phase==='setting'?'준비 완료':'다음 라운드 대기';
+ $('playerStatusList').append(el('div',`${user.nickname}${id===uid?' (나)':''} · ${status}`,'text-sm py-1'));});
+ $('results').replaceChildren();
+ if(room?.phase==='results'){
+ $('results').append(el('h3','라운드 결과','text-xl font-bold'),el('p','정답: '+known,'text-sm my-2'));
+ const rows=rankings(room);rows.forEach((v,i)=>$('results').append(el('p',`${v.solved?i+1+'위':'—'} ${v.nickname} · ${v.solved?v.guesses.length+'회 정답':v.gaveUp?'포기':'5회 실패'}`,'py-1')));
+ if(!rows.some(v=>v.solved))$('results').append(el('p','이번 라운드는 정답자가 없어요.'));
+ $('results').append(el('p','같은 횟수는 서버 제출 접수 순으로 판정합니다.','text-xs mt-3'));}
+}
+let advancing=false;
+setInterval(async()=>{if(room?.phase==='results'&&now()>=room.advanceAt&&connected&&!advancing){advancing=true;try{await transact({type:'next',round:room.round});}catch(e){error(e);}finally{advancing=false;}}},1000);
+window.addEventListener('keydown',e=>{if(e.target.matches('input,textarea'))return;if(e.key==='Enter'){e.preventDefault();handleSubmit();}if(e.key==='Backspace'){e.preventDefault();handleDelete();}});
+try{if(!window.firebase)throw Error('Firebase 스크립트를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해주세요.');firebase.initializeApp(firebaseConfig);db=firebase.database();
+ db.ref('.info/serverTimeOffset').on('value',s=>offset=s.val()||0);
+ db.ref('.info/connected').on('value',s=>{connected=s.val()===true;render();});
+ if(session.code)enter(session.code,session.name);else render();
+}catch(e){render();$('connection').textContent=e.message;}
 
-        const WORDS = ["ㅊㅗㅅㅜㄴ", "ㅎㅏㄴㄱㅡ", "ㅂㅏㄷㅏㅁ", "ㅅㅏㄹㅏㅇ", "ㄱㅗㅇㅂㅜ", "ㄴㅗㅌㅡㅂ", "ㅋㅗㅍㅣㄴ"];
-        let secretWord = "";
-        let currentGuess = "";
-        let submittedGuesses = [];
-        const maxGuesses = 5;
-        let isGameOver = false;
-
-        let makerWord = "";
-        let hasMasterSetWord = false;
-
-        let currentRoomCode = null;
-        let myNickname = "플레이어";
-        let isMaster = false;
-        let roomDataListener = null;
-
-        const boardEl = document.getElementById('board');
-
-        function initBoard() {
-            boardEl.innerHTML = '';
-            for (let i = 0; i < maxGuesses; i++) {
-                const row = document.createElement('div');
-                row.className = 'grid grid-cols-5 gap-2';
-                for (let j = 0; j < 5; j++) {
-                    const tile = document.createElement('div');
-                    tile.className = 'tile';
-                    tile.id = `tile-${i}-${j}`;
-                    row.appendChild(tile);
-                }
-                boardEl.appendChild(row);
-            }
-        }
-
-        function renderBoard() {
-            if (isMaster) {
-                for (let i = 0; i < maxGuesses; i++) {
-                    for (let j = 0; j < 5; j++) {
-                        const tile = document.getElementById(`tile-${i}-${j}`);
-                        tile.className = 'tile';
-                        if (i === 0) {
-                            const char = hasMasterSetWord ? (secretWord[j] || "") : (makerWord[j] || "");
-                            tile.textContent = char;
-                            tile.classList.add('maker-input');
-                            if (char) tile.classList.add('filled');
-                        } else {
-                            tile.textContent = "";
-                        }
-                    }
-                }
-                return;
-            }
-
-            for (let i = 0; i < maxGuesses; i++) {
-                const isSubmitted = i < submittedGuesses.length;
-                const guess = isSubmitted ? submittedGuesses[i] : (i === submittedGuesses.length ? currentGuess : "");
-
-                for (let j = 0; j < 5; j++) {
-                    const tile = document.getElementById(`tile-${i}-${j}`);
-                    const char = guess[j] || "";
-                    tile.textContent = char;
-                    tile.className = 'tile';
-                    if (char) tile.classList.add('filled');
-
-                    if (isSubmitted) {
-                        const targetChars = secretWord.split('');
-                        const guessChars = guess.split('');
-                        if (guessChars[j] === targetChars[j]) {
-                            tile.classList.add('correct');
-                        } else if (targetChars.includes(guessChars[j])) {
-                            tile.classList.add('present');
-                        } else {
-                            tile.classList.add('absent');
-                        }
-                    }
-                }
-            }
-            updateKeyboardColors();
-            
-            if (currentRoomCode) {
-                db.ref(`rooms/${currentRoomCode}/players/${myUid}`).update({
-                    nickname: myNickname,
-                    guesses: submittedGuesses,
-                    completed: submittedGuesses.includes(secretWord) || submittedGuesses.length >= maxGuesses
-                });
-            }
-        }
-
-        function updateKeyboardColors() {
-            if (isMaster) return;
-            const keyElements = document.querySelectorAll('.key');
-            keyElements.forEach(key => {
-                const char = key.textContent.trim();
-                if (char.length !== 1) return;
-                
-                let status = 0;
-                submittedGuesses.forEach(guess => {
-                    for (let j = 0; j < 5; j++) {
-                        if (guess[j] === char) {
-                            if (secretWord[j] === char) status = Math.max(status, 3);
-                            else if (secretWord.includes(char)) status = Math.max(status, 2);
-                            else status = Math.max(status, 1);
-                        }
-                    }
-                });
-
-                key.className = 'key flex-1 py-3';
-                if (status === 3) key.classList.add('correct');
-                else if (status === 2) key.classList.add('present');
-                else if (status === 1) key.classList.add('absent');
-            });
-        }
-
-        function handleKey(char) {
-            if (isMaster) {
-                if (hasMasterSetWord) return;
-                if (makerWord.length < 5) {
-                    makerWord += char;
-                    renderBoard();
-                }
-                return;
-            }
-
-            if (isGameOver) return;
-            if (submittedGuesses.length >= maxGuesses) return;
-            if (!secretWord) {
-                showToast("출제자가 아직 문제를 출제하지 않았습니다!");
-                return;
-            }
-            if (currentGuess.length < 5) {
-                currentGuess += char;
-                renderBoard();
-            }
-        }
-
-        function handleDelete() {
-            if (isMaster) {
-                if (hasMasterSetWord) return;
-                if (makerWord.length > 0) {
-                    makerWord = makerWord.slice(0, -1);
-                    renderBoard();
-                }
-                return;
-            }
-
-            if (isGameOver) return;
-            if (currentGuess.length > 0) {
-                currentGuess = currentGuess.slice(0, -1);
-                renderBoard();
-            }
-        }
-
-        function handleSubmit() {
-            if (isMaster) {
-                if (hasMasterSetWord) {
-                    showToast("이미 출제가 완료되었습니다!");
-                    return;
-                }
-                if (makerWord.length !== 5) {
-                    showToast("첫 번째 줄에 5자모를 모두 채워주세요!");
-                    return;
-                }
-                db.ref(`rooms/${currentRoomCode}`).update({ secretWord: makerWord });
-                hasMasterSetWord = true;
-                showToast("🎯 문제가 출제되었습니다!");
-                toggleMasterUI();
-                renderBoard();
-                return;
-            }
-
-            if (isGameOver) return;
-            if (submittedGuesses.length >= maxGuesses) return;
-
-            if (!secretWord) {
-                showToast("출제자가 아직 문제를 출제하지 않았습니다!");
-                return;
-            }
-
-            if (currentGuess.length !== 5) {
-                showToast("5자모를 모두 입력한 뒤 제출해주세요!");
-                return;
-            }
-
-            const newGuess = currentGuess;
-            submittedGuesses.push(newGuess);
-            currentGuess = "";
-            renderBoard();
-
-            if (newGuess === secretWord) {
-                isGameOver = true;
-                showGameOverModal("정답입니다! 🎉", `시도 횟수: ${submittedGuesses.length} / ${maxGuesses}회`);
-            } else if (submittedGuesses.length >= maxGuesses) {
-                isGameOver = true;
-                showGameOverModal("게임 오버 😢", `정답은 [ ${secretWord} ] 입니다.`);
-            } else {
-                showToast(`${submittedGuesses.length}번째 시도 완료! 다음 단어를 입력하세요.`);
-            }
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.classList.remove('opacity-0');
-            setTimeout(() => toast.classList.add('opacity-0'), 2000);
-        }
-
-        function openLobbyModal() {
-            document.getElementById('lobbyModal').classList.remove('hidden');
-        }
-        function closeLobbyModal() {
-            document.getElementById('lobbyModal').classList.add('hidden');
-        }
-        function showJoinInput() {
-            document.getElementById('joinCodeArea').classList.remove('hidden');
-        }
-
-        function createRoom() {
-            const nick = document.getElementById('nicknameInput').value.trim();
-            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
-            myNickname = nick;
-
-            const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
-            currentRoomCode = roomCode;
-            isMaster = true;
-
-            db.ref(`rooms/${roomCode}`).set({
-                secretWord: "",
-                masterUid: myUid,
-                masterName: myNickname,
-                round: 1,
-                players: {
-                    [myUid]: { nickname: myNickname, guesses: [], completed: false }
-                }
-            }).then(() => {
-                closeLobbyModal();
-                enterRoomMode(roomCode, "", true);
-                showToast("대결 방이 생성되었습니다!");
-            });
-        }
-
-        function joinRoom() {
-            const nick = document.getElementById('nicknameInput').value.trim();
-            const roomCode = document.getElementById('roomCodeInput').value.trim();
-            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
-            if (roomCode.length !== 6) { alert("올바른 6자리 방 코드를 입력해주세요!"); return; }
+</script></body></html>
