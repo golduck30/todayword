@@ -174,13 +174,21 @@
             messagingSenderId: "367825644618",
             appId: "1:367825644618:web:3f236c72c0d5347878ab3"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        // Firebase 로드/초기화가 실패해도 입력 기능 전체가 멈추지 않도록 보호
+        let db = null;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+        } catch (e) {
+            console.error('Firebase 초기화 실패:', e);
+        }
 
-        let myUid = localStorage.getItem('wordle_uid');
+        // localStorage가 막힌 환경(인앱 브라우저, iframe 등)에서도 동작하도록 보호
+        let myUid = null;
+        try { myUid = localStorage.getItem('wordle_uid'); } catch (e) {}
         if (!myUid) {
             myUid = 'user_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('wordle_uid', myUid);
+            try { localStorage.setItem('wordle_uid', myUid); } catch (e) {}
         }
 
         let wordLength = 5;
@@ -207,12 +215,19 @@
         const boardEl = document.getElementById('board');
 
         // 자모 조합 검증 함수 (한글 단어로 올바르게 구성되는지 검사)
+        // ※ 입력(handleKey) 중에는 절대 호출하지 않고, "제출/출제" 버튼에서만 호출합니다.
         function isValidJamoSequence(jamoStr) {
             if (!jamoStr || jamoStr.length === 0) return true;
             if (typeof Hangul === 'undefined') return true;
 
             const assembled = Hangul.assemble(jamoStr.split(''));
             return Hangul.isCompleteAll(assembled);
+        }
+
+        // 자모를 글자로 조합한 결과 (오류 안내용)
+        function assemblePreview(jamoStr) {
+            if (typeof Hangul === 'undefined') return '';
+            return Hangul.assemble(jamoStr.split(''));
         }
 
         function setWordLength(len) {
@@ -316,20 +331,22 @@
                 }
             }
             updateKeyboardColors();
-            
-            if (currentRoomCode && !isMaster) {
-                const isCompleted = submittedGuesses.includes(secretWord) || submittedGuesses.length >= maxGuesses;
-                const updateData = {
-                    nickname: myNickname,
-                    guesses: submittedGuesses,
-                    completed: isCompleted
-                };
-                if (submittedGuesses.includes(secretWord) && !solvedTimestamp) {
-                    solvedTimestamp = Date.now();
-                    updateData.solvedTimestamp = solvedTimestamp;
-                }
-                db.ref(`rooms/${currentRoomCode}/players/${myUid}`).update(updateData);
+        }
+
+        // 내 진행 상황을 서버에 저장 (제출 시 / 라운드 초기화 시에만 호출)
+        function syncMyProgress() {
+            if (!db || !currentRoomCode || isMaster) return;
+            const isCompleted = (!!secretWord && submittedGuesses.includes(secretWord)) || submittedGuesses.length >= maxGuesses;
+            const updateData = {
+                nickname: myNickname,
+                guesses: submittedGuesses,
+                completed: isCompleted
+            };
+            if (secretWord && submittedGuesses.includes(secretWord) && !solvedTimestamp) {
+                solvedTimestamp = Date.now();
+                updateData.solvedTimestamp = solvedTimestamp;
             }
+            db.ref(`rooms/${currentRoomCode}/players/${myUid}`).update(updateData);
         }
 
         function updateKeyboardColors() {
@@ -364,7 +381,8 @@
         }
 
         function handleKey(char) {
-            // 입력 중에는 미완성 음절을 허용하고, 완성 여부는 제출할 때만 검사합니다.
+            // 입력 중에는 어떤 자모든 자유롭게 입력할 수 있습니다.
+            // 글자 완성 여부는 [제출]/[문제 출제] 버튼을 누를 때(handleSubmit)만 검사합니다.
             if (!/^[ㄱ-ㅎㅏ-ㅣ]$/.test(char)) return;
             if (isMaster) {
                 if (hasMasterSetWord) return;
@@ -413,7 +431,11 @@
                     return;
                 }
                 if (!isValidJamoSequence(makerWord)) {
-                    showToast("올바른 한글 단어로 완성되지 않는 자모입니다!");
+                    showToast(`완성되지 않은 글자가 있어요! (${assemblePreview(makerWord)})`);
+                    return;
+                }
+                if (!db || !currentRoomCode) {
+                    showToast("서버에 연결되지 않아 출제할 수 없습니다.");
                     return;
                 }
                 db.ref(`rooms/${currentRoomCode}`).update({ secretWord: makerWord, targetLength: wordLength });
@@ -437,8 +459,9 @@
                 return;
             }
 
+            // 제출할 때만 완성된 글자인지 확인 (미완성이면 입력은 그대로 유지)
             if (!isValidJamoSequence(currentGuess)) {
-                showToast("올바른 한글 단어로 완성되지 않는 자모입니다!");
+                showToast(`완성되지 않은 글자가 있어요! (${assemblePreview(currentGuess)})`);
                 return;
             }
 
@@ -446,6 +469,7 @@
             submittedGuesses.push(newGuess);
             currentGuess = "";
             renderBoard();
+            syncMyProgress();
 
             if (newGuess === secretWord || submittedGuesses.length >= maxGuesses) {
                 isGameOver = true;
@@ -479,6 +503,7 @@
         function createRoom() {
             const nick = document.getElementById('nicknameInput').value.trim();
             if (!nick) { alert("닉네임을 입력해주세요!"); return; }
+            if (!db) { alert("서버(Firebase)에 연결할 수 없습니다. 인터넷 연결을 확인해주세요."); return; }
             myNickname = nick;
 
             const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -506,6 +531,7 @@
             const roomCode = document.getElementById('roomCodeInput').value.trim();
             if (!nick) { alert("닉네임을 입력해주세요!"); return; }
             if (roomCode.length !== 6) { alert("올바른 6자리 방 코드를 입력해주세요!"); return; }
+            if (!db) { alert("서버(Firebase)에 연결할 수 없습니다. 인터넷 연결을 확인해주세요."); return; }
             myNickname = nick;
             currentRoomCode = roomCode;
 
@@ -556,13 +582,23 @@
                     resetGameData();
                 }
 
-                if (secretWord !== data.secretWord) {
-                    secretWord = data.secretWord;
+                const newWord = data.secretWord || "";
+                const newIsMaster = (data.masterUid === myUid);
+                const wordChanged = (secretWord !== newWord);
+                const masterChanged = (newIsMaster !== isMaster);
+
+                if (wordChanged) {
+                    secretWord = newWord;
                     if (secretWord) hasMasterSetWord = true;
-                    if (!isMaster) resetGameData();
+                }
+                // 역할(출제자/참가자)을 먼저 확정한 뒤에 초기화해야 이전 상태가 남지 않음
+                isMaster = newIsMaster;
+
+                const newRoundStarted = wordChanged && !secretWord;   // 다음 라운드 시작
+                if (masterChanged || newRoundStarted || (wordChanged && !isMaster)) {
+                    resetGameData();
                 }
 
-                isMaster = (data.masterUid === myUid);
                 document.getElementById('dispMaster').textContent = data.masterName || "알 수 없음";
 
                 toggleMasterUI();
@@ -732,7 +768,7 @@
         function nextRound() {
             if (!isMaster) return;
             document.getElementById('gameOverModal').classList.add('hidden');
-            if (currentRoomCode) {
+            if (db && currentRoomCode) {
                 db.ref(`rooms/${currentRoomCode}`).once('value', snapshot => {
                     const data = snapshot.val();
                     if (!data || !data.players) return;
@@ -771,6 +807,7 @@
             document.getElementById('gameOverModal').classList.add('hidden');
             initBoard();
             renderBoard();
+            syncMyProgress();
         }
 
         // 초기화
