@@ -364,14 +364,12 @@
         }
 
         function handleKey(char) {
+            // 입력 중에는 미완성 음절을 허용하고, 완성 여부는 제출할 때만 검사합니다.
+            if (!/^[ㄱ-ㅎㅏ-ㅣ]$/.test(char)) return;
             if (isMaster) {
                 if (hasMasterSetWord) return;
                 if (makerWord.length < wordLength) {
                     const nextMaker = makerWord + char;
-                    if (!isValidJamoSequence(nextMaker)) {
-                        showToast("올바른 한글 단어가 조합되지 않는 자모 순서입니다!");
-                        return;
-                    }
                     makerWord = nextMaker;
                     renderBoard();
                 }
@@ -382,10 +380,6 @@
             if (submittedGuesses.length >= maxGuesses) return;
             if (currentGuess.length < wordLength) {
                 const nextGuess = currentGuess + char;
-                if (!isValidJamoSequence(nextGuess)) {
-                    showToast("올바른 한글 단어가 조합되지 않는 자모 순서입니다!");
-                    return;
-                }
                 currentGuess = nextGuess;
                 renderBoard();
             }
