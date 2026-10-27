@@ -8,15 +8,20 @@
     <!-- Firebase SDK (Compat 버전) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Hangul.js (한글 자모 조합 검증용) -->
+    <script src="https://unpkg.com/hangul-js@0.2.6/hangul.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; user-select: none; }
         .tile {
-            width: 52px; height: 52px;
+            width: 44px; height: 44px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; font-weight: 700; border-radius: 0.75rem;
+            font-size: 1.25rem; font-weight: 700; border-radius: 0.5rem;
             border: 2px solid #e2e8f0; background-color: #ffffff; color: #1e293b;
             transition: all 0.15s ease-in-out;
+        }
+        @media (min-width: 400px) {
+            .tile { width: 50px; height: 50px; font-size: 1.4rem; }
         }
         .tile.correct { background-color: #4ade80 !important; border-color: #4ade80 !important; color: white !important; }
         .tile.present { background-color: #facc15 !important; border-color: #facc15 !important; color: white !important; }
@@ -34,6 +39,12 @@
         .key.correct { background-color: #4ade80 !important; color: white !important; }
         .key.present { background-color: #facc15 !important; color: white !important; }
         .key.absent { background-color: #94a3b8 !important; color: white !important; }
+        
+        .length-btn.active {
+            background-color: #059669 !important;
+            color: #ffffff !important;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-slate-800">
@@ -46,6 +57,12 @@
             <span id="gameModeBadge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">혼자 하기</span>
         </div>
         <div class="flex items-center space-x-2">
+            <!-- 글자 수 선택 버튼 -->
+            <div id="wordLengthSelector" class="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold text-slate-600">
+                <button onclick="setWordLength(5)" id="lenBtn-5" class="length-btn px-2 py-1 rounded-md transition active">5자</button>
+                <button onclick="setWordLength(6)" id="lenBtn-6" class="length-btn px-2 py-1 rounded-md transition">6자</button>
+                <button onclick="setWordLength(7)" id="lenBtn-7" class="length-btn px-2 py-1 rounded-md transition">7자</button>
+            </div>
             <button onclick="openLobbyModal()" class="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 <span id="roomBtnText">대결 방</span>
@@ -62,11 +79,11 @@
                 <div>방코드: <span id="dispRoomCode" class="font-bold text-emerald-700"></span></div>
                 <div>출제자: <span id="dispMaster" class="font-bold text-emerald-700"></span></div>
             </div>
-            <div id="masterNotice" class="text-xs text-amber-700 mt-1 font-medium hidden">🎯 첫 번째 줄 타일에 5자모를 입력하고 [문제 출제] 버튼을 누르세요!</div>
+            <div id="masterNotice" class="text-xs text-amber-700 mt-1 font-medium hidden">🎯 첫 번째 줄 타일에 자모를 입력하고 [문제 출제] 버튼을 누르세요!</div>
         </div>
 
-        <!-- 메인 게임 보드 (5행 5열) -->
-        <div id="board" class="grid grid-rows-5 gap-2 my-auto"></div>
+        <!-- 메인 게임 보드 -->
+        <div id="board" class="grid gap-2 my-auto"></div>
 
         <!-- 실시간 관전 대시보드 -->
         <div id="spectatorDashboard" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 hidden max-h-48 overflow-y-auto">
@@ -166,13 +183,17 @@
             localStorage.setItem('wordle_uid', myUid);
         }
 
+        let wordLength = 5;
         let secretWord = "";
         let currentGuess = "";
         let submittedGuesses = [];
         const maxGuesses = 5;
         let isGameOver = false;
         let isResultsShown = false;
-        let solvedTimestamp = null; // 정답 맞힌 시간 저장
+        let solvedTimestamp = null;
+
+        // 키보드 자판 상태 { 자모: 3(correct) | 2(present) | 1(absent) }
+        let keyboardState = {};
 
         // 출제자 전용 상태
         let makerWord = "";
@@ -185,12 +206,39 @@
 
         const boardEl = document.getElementById('board');
 
+        // 자모 조합 검증 함수 (한글 단어로 올바르게 구성되는지 검사)
+        function isValidJamoSequence(jamoStr) {
+            if (!jamoStr || jamoStr.length === 0) return true;
+            if (typeof Hangul === 'undefined') return true;
+
+            const assembled = Hangul.assemble(jamoStr.split(''));
+            return Hangul.isCompleteAll(assembled);
+        }
+
+        function setWordLength(len) {
+            if (submittedGuesses.length > 0 || (isMaster && makerWord.length > 0)) {
+                if (!confirm("글자 수를 변경하면 진행 중인 입력이 초기화됩니다. 변경하시겠습니까?")) return;
+            }
+            wordLength = len;
+            
+            setWordLengthUI(wordLength);
+
+            if (currentRoomCode && isMaster) {
+                db.ref(`rooms/${currentRoomCode}`).update({ targetLength: wordLength });
+            }
+
+            resetGameData();
+        }
+
         function initBoard() {
             boardEl.innerHTML = '';
+            boardEl.className = `grid grid-rows-5 gap-2 my-auto`;
+            
             for (let i = 0; i < maxGuesses; i++) {
                 const row = document.createElement('div');
-                row.className = 'grid grid-cols-5 gap-2';
-                for (let j = 0; j < 5; j++) {
+                row.className = `grid gap-2`;
+                row.style.gridTemplateColumns = `repeat(${wordLength}, minmax(0, 1fr))`;
+                for (let j = 0; j < wordLength; j++) {
                     const tile = document.createElement('div');
                     tile.className = 'tile';
                     tile.id = `tile-${i}-${j}`;
@@ -200,11 +248,41 @@
             }
         }
 
+        function evaluateGuess(guess, target) {
+            const res = new Array(guess.length).fill('absent');
+            if (!target || target.length !== guess.length) return res;
+
+            const targetChars = target.split('');
+            const guessChars = guess.split('');
+            const targetCounts = {};
+
+            for (let i = 0; i < targetChars.length; i++) {
+                const char = targetChars[i];
+                if (guessChars[i] === char) {
+                    res[i] = 'correct';
+                } else {
+                    targetCounts[char] = (targetCounts[char] || 0) + 1;
+                }
+            }
+
+            for (let i = 0; i < guessChars.length; i++) {
+                if (res[i] === 'correct') continue;
+                const char = guessChars[i];
+                if (targetCounts[char] && targetCounts[char] > 0) {
+                    res[i] = 'present';
+                    targetCounts[char]--;
+                }
+            }
+
+            return res;
+        }
+
         function renderBoard() {
             if (isMaster) {
                 for (let i = 0; i < maxGuesses; i++) {
-                    for (let j = 0; j < 5; j++) {
+                    for (let j = 0; j < wordLength; j++) {
                         const tile = document.getElementById(`tile-${i}-${j}`);
+                        if (!tile) continue;
                         tile.className = 'tile';
                         if (i === 0) {
                             const char = hasMasterSetWord ? (secretWord[j] || "") : (makerWord[j] || "");
@@ -222,24 +300,18 @@
             for (let i = 0; i < maxGuesses; i++) {
                 const isSubmitted = i < submittedGuesses.length;
                 const guess = isSubmitted ? submittedGuesses[i] : (i === submittedGuesses.length ? currentGuess : "");
+                const evaluation = isSubmitted ? evaluateGuess(guess, secretWord) : null;
 
-                for (let j = 0; j < 5; j++) {
+                for (let j = 0; j < wordLength; j++) {
                     const tile = document.getElementById(`tile-${i}-${j}`);
+                    if (!tile) continue;
                     const char = guess[j] || "";
                     tile.textContent = char;
                     tile.className = 'tile';
                     if (char) tile.classList.add('filled');
 
-                    if (isSubmitted) {
-                        const targetChars = secretWord.split('');
-                        const guessChars = guess.split('');
-                        if (guessChars[j] === targetChars[j]) {
-                            tile.classList.add('correct');
-                        } else if (targetChars.includes(guessChars[j])) {
-                            tile.classList.add('present');
-                        } else {
-                            tile.classList.add('absent');
-                        }
+                    if (isSubmitted && evaluation) {
+                        tile.classList.add(evaluation[j]);
                     }
                 }
             }
@@ -262,22 +334,28 @@
 
         function updateKeyboardColors() {
             if (isMaster) return;
+
+            submittedGuesses.forEach(guess => {
+                const evalRes = evaluateGuess(guess, secretWord);
+                for (let j = 0; j < guess.length; j++) {
+                    const char = guess[j];
+                    const status = evalRes[j];
+                    let val = 1;
+                    if (status === 'correct') val = 3;
+                    else if (status === 'present') val = 2;
+
+                    if (!keyboardState[char] || val > keyboardState[char]) {
+                        keyboardState[char] = val;
+                    }
+                }
+            });
+
             const keyElements = document.querySelectorAll('.key');
             keyElements.forEach(key => {
                 const char = key.textContent.trim();
                 if (char.length !== 1) return;
                 
-                let status = 0;
-                submittedGuesses.forEach(guess => {
-                    for (let j = 0; j < 5; j++) {
-                        if (guess[j] === char) {
-                            if (secretWord[j] === char) status = Math.max(status, 3);
-                            else if (secretWord.includes(char)) status = Math.max(status, 2);
-                            else status = Math.max(status, 1);
-                        }
-                    }
-                });
-
+                const status = keyboardState[char] || 0;
                 key.className = 'key flex-1 py-3';
                 if (status === 3) key.classList.add('correct');
                 else if (status === 2) key.classList.add('present');
@@ -288,8 +366,13 @@
         function handleKey(char) {
             if (isMaster) {
                 if (hasMasterSetWord) return;
-                if (makerWord.length < 5) {
-                    makerWord += char;
+                if (makerWord.length < wordLength) {
+                    const nextMaker = makerWord + char;
+                    if (!isValidJamoSequence(nextMaker)) {
+                        showToast("올바른 한글 단어가 조합되지 않는 자모 순서입니다!");
+                        return;
+                    }
+                    makerWord = nextMaker;
                     renderBoard();
                 }
                 return;
@@ -297,8 +380,13 @@
 
             if (isGameOver) return;
             if (submittedGuesses.length >= maxGuesses) return;
-            if (currentGuess.length < 5) {
-                currentGuess += char;
+            if (currentGuess.length < wordLength) {
+                const nextGuess = currentGuess + char;
+                if (!isValidJamoSequence(nextGuess)) {
+                    showToast("올바른 한글 단어가 조합되지 않는 자모 순서입니다!");
+                    return;
+                }
+                currentGuess = nextGuess;
                 renderBoard();
             }
         }
@@ -326,11 +414,15 @@
                     showToast("이미 출제가 완료되었습니다!");
                     return;
                 }
-                if (makerWord.length !== 5) {
-                    showToast("첫번째 줄에 5자모를 모두 채워주세요!");
+                if (makerWord.length !== wordLength) {
+                    showToast(`첫번째 줄에 ${wordLength}자모를 모두 채워주세요!`);
                     return;
                 }
-                db.ref(`rooms/${currentRoomCode}`).update({ secretWord: makerWord });
+                if (!isValidJamoSequence(makerWord)) {
+                    showToast("올바른 한글 단어로 완성되지 않는 자모입니다!");
+                    return;
+                }
+                db.ref(`rooms/${currentRoomCode}`).update({ secretWord: makerWord, targetLength: wordLength });
                 hasMasterSetWord = true;
                 showToast("🎯 문제가 출제되었습니다!");
                 toggleMasterUI();
@@ -346,8 +438,13 @@
                 return;
             }
 
-            if (currentGuess.length !== 5) {
-                showToast("5자모를 모두 입력한 뒤 제출해주세요!");
+            if (currentGuess.length !== wordLength) {
+                showToast(`${wordLength}자모를 모두 입력한 뒤 제출해주세요!`);
+                return;
+            }
+
+            if (!isValidJamoSequence(currentGuess)) {
+                showToast("올바른 한글 단어로 완성되지 않는 자모입니다!");
                 return;
             }
 
@@ -375,7 +472,6 @@
             setTimeout(() => toast.classList.add('opacity-0'), 2000);
         }
 
-        // --- 멀티플레이 로직 ---
         function openLobbyModal() {
             document.getElementById('lobbyModal').classList.remove('hidden');
         }
@@ -397,6 +493,7 @@
 
             db.ref(`rooms/${roomCode}`).set({
                 secretWord: "",
+                targetLength: wordLength,
                 masterUid: myUid,
                 masterName: myNickname,
                 round: 1,
@@ -423,6 +520,10 @@
                 if (!room) { alert("존재하지 않는 방입니다."); return; }
 
                 isMaster = (room.masterUid === myUid);
+                if (room.targetLength) {
+                    wordLength = room.targetLength;
+                    setWordLengthUI(wordLength);
+                }
                 db.ref(`rooms/${roomCode}/players/${myUid}`).set({
                     nickname: myNickname, guesses: [], completed: isMaster, solvedTimestamp: 0
                 });
@@ -430,6 +531,14 @@
                 closeLobbyModal();
                 enterRoomMode(roomCode, room.secretWord || "", isMaster);
                 showToast("방에 입장했습니다!");
+            });
+        }
+
+        function setWordLengthUI(len) {
+            [5, 6, 7].forEach(l => {
+                const btn = document.getElementById(`lenBtn-${l}`);
+                if (l === len) btn.classList.add('active');
+                else btn.classList.remove('active');
             });
         }
 
@@ -447,6 +556,12 @@
                 const data = snapshot.val();
                 if (!data) return;
                 
+                if (data.targetLength && data.targetLength !== wordLength) {
+                    wordLength = data.targetLength;
+                    setWordLengthUI(wordLength);
+                    resetGameData();
+                }
+
                 if (secretWord !== data.secretWord) {
                     secretWord = data.secretWord;
                     if (secretWord) hasMasterSetWord = true;
@@ -492,7 +607,7 @@
                 if (hasMasterSetWord) {
                     noticeEl.textContent = "🎯 정답 출제 완료! 참가자들의 풀이를 기다리는 중...";
                 } else {
-                    noticeEl.textContent = "🎯 첫 번째 줄 타일에 5자모를 입력하고 [문제 출제] 버튼을 누르세요!";
+                    noticeEl.textContent = `🎯 첫 번째 줄 타일에 ${wordLength}자모를 입력하고 [문제 출제] 버튼을 누르세요!`;
                 }
             } else {
                 noticeEl.classList.add('hidden');
@@ -519,16 +634,17 @@
                     const pGuesses = p.guesses || [];
                     for (let i = 0; i < maxGuesses; i++) {
                         const g = pGuesses[i] || "";
+                        const evalRes = evaluateGuess(g, secretWord);
                         rowsHtml += '<div class="flex space-x-1">';
-                        for (let j = 0; j < 5; j++) {
+                        for (let j = 0; j < wordLength; j++) {
                             const char = g[j] || "";
                             let tileColor = 'bg-slate-50 border-slate-200 text-slate-400';
                             if (char && secretWord) {
-                                if (char === secretWord[j]) tileColor = 'bg-emerald-400 border-emerald-400 text-white font-bold';
-                                else if (secretWord.includes(char)) tileColor = 'bg-amber-400 border-amber-400 text-white font-bold';
+                                if (evalRes[j] === 'correct') tileColor = 'bg-emerald-400 border-emerald-400 text-white font-bold';
+                                else if (evalRes[j] === 'present') tileColor = 'bg-amber-400 border-amber-400 text-white font-bold';
                                 else tileColor = 'bg-slate-400 border-slate-400 text-white font-bold';
                             }
-                            rowsHtml += `<div class="w-6 h-6 border rounded flex items-center justify-center text-xs ${tileColor}">${char}</div>`;
+                            rowsHtml += `<div class="w-5 h-5 border rounded flex items-center justify-center text-[10px] ${tileColor}">${char}</div>`;
                         }
                         rowsHtml += '</div>';
                     }
@@ -572,10 +688,6 @@
                     return { uid, nickname: p.nickname, solved, attempts, timestamp };
                 });
 
-            // 순위 정렬: 
-            // 1순위: 정답 맞춘 사람 우선
-            // 2순위: 시도 횟수가 적은 사람 우선
-            // 3순위 (동점 시): 먼저 맞힌 사람(solvedTimestamp가 빠른 사람) 우선
             participantsList.sort((a, b) => {
                 if (a.solved && !b.solved) return -1;
                 if (!a.solved && b.solved) return 1;
@@ -656,6 +768,7 @@
         function resetGameData() {
             currentGuess = "";
             submittedGuesses = [];
+            keyboardState = {};
             isGameOver = false;
             isResultsShown = false;
             solvedTimestamp = null;
