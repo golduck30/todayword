@@ -146,7 +146,8 @@
                 </div>
                 <div id="joinCodeArea" class="hidden pt-2 border-t border-slate-100 space-y-2">
                     <input type="text" id="roomCodeInput" maxlength="6" placeholder="6자리 방 코드 입력" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-center tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button onclick="joinRoom()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">참여하기</button>
+                    <button onclick="joinRoom(false)" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">참여하기 (문제 풀기)</button>
+                    <button onclick="joinRoom(true)" class="w-full py-2 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition">👀 관전만 하기 (문제 안 풀어요)</button>
                 </div>
             </div>
         </div>
@@ -210,6 +211,7 @@
         let currentRoomCode = null;
         let myNickname = "플레이어";
         let isMaster = false;
+        let isSpectator = false;   // 관전 전용 입장 여부 (문제를 풀지 않고 출제자처럼 관전 보드만 봄)
         let roomDataListener = null;
 
         const boardEl = document.getElementById('board');
@@ -281,6 +283,7 @@
         }
 
         function setWordLength(len) {
+            if (isSpectator) { showToast("관전 중에는 글자 수를 바꿀 수 없어요."); return; }
             if (submittedGuesses.length > 0 || (isMaster && makerWord.length > 0)) {
                 if (!confirm("글자 수를 변경하면 진행 중인 입력이 초기화됩니다. 변경하시겠습니까?")) return;
             }
@@ -385,7 +388,7 @@
 
         // 내 진행 상황을 서버에 저장 (제출 시 / 라운드 초기화 시에만 호출)
         function syncMyProgress() {
-            if (!db || !currentRoomCode || isMaster) return;
+            if (!db || !currentRoomCode || isMaster || isSpectator) return;
             const isCompleted = (!!secretWord && submittedGuesses.includes(secretWord)) || submittedGuesses.length >= maxGuesses;
             const updateData = {
                 nickname: myNickname,
@@ -433,6 +436,7 @@
         function handleKey(char) {
             // 입력 중에는 어떤 자모든 자유롭게 입력할 수 있습니다.
             // 글자 완성 여부는 [제출]/[문제 출제] 버튼을 누를 때(handleSubmit)만 검사합니다.
+            if (isSpectator) return;
             if (!/^[ㄱ-ㅎㅏ-ㅣ]$/.test(char)) return;
             if (isMaster) {
                 if (hasMasterSetWord) return;
@@ -454,6 +458,7 @@
         }
 
         function handleDelete() {
+            if (isSpectator) return;
             if (isMaster) {
                 if (hasMasterSetWord) return;
                 if (makerWord.length > 0) {
@@ -471,6 +476,7 @@
         }
 
         function handleSubmit() {
+            if (isSpectator) return;
             if (isMaster) {
                 if (hasMasterSetWord) {
                     showToast("이미 출제가 완료되었습니다!");
@@ -570,6 +576,7 @@
             const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
             currentRoomCode = roomCode;
             isMaster = true;
+            isSpectator = false;
 
             db.ref(`rooms/${roomCode}`).set({
                 secretWord: "",
@@ -587,7 +594,7 @@
             });
         }
 
-        function joinRoom() {
+        function joinRoom(asSpectator = false) {
             const nick = document.getElementById('nicknameInput').value.trim();
             const roomCode = document.getElementById('roomCodeInput').value.trim();
             if (!nick) { alert("닉네임을 입력해주세요!"); return; }
@@ -601,17 +608,24 @@
                 if (!room) { alert("존재하지 않는 방입니다."); return; }
 
                 isMaster = (room.masterUid === myUid);
+                if (asSpectator && isMaster) {
+                    alert("현재 출제자는 관전 전용으로 입장할 수 없어요. [참여하기]로 입장해주세요.");
+                    return;
+                }
+                isSpectator = asSpectator;
                 if (room.targetLength) {
                     wordLength = room.targetLength;
                     setWordLengthUI(wordLength);
                 }
+                // 관전자는 spectator:true 로 표시하고, 라운드 종료 판정에 영향을 주지 않도록 completed:true 로 둡니다.
                 db.ref(`rooms/${roomCode}/players/${myUid}`).set({
-                    nickname: myNickname, guesses: [], completed: isMaster, solvedTimestamp: 0
+                    nickname: myNickname, guesses: [], completed: (isMaster || isSpectator), solvedTimestamp: 0,
+                    spectator: isSpectator
                 });
 
                 closeLobbyModal();
                 enterRoomMode(roomCode, room.secretWord || "", isMaster);
-                showToast("방에 입장했습니다!");
+                showToast(isSpectator ? "관전 모드로 입장했습니다!" : "방에 입장했습니다!");
             });
         }
 
@@ -626,7 +640,7 @@
         function enterRoomMode(roomCode, word, masterStatus) {
             secretWord = word;
             isMaster = masterStatus;
-            document.getElementById('gameModeBadge').textContent = "대결 모드";
+            document.getElementById('gameModeBadge').textContent = isSpectator ? "관전 모드" : "대결 모드";
             document.getElementById('multiplayerInfo').classList.remove('hidden');
             document.getElementById('dispRoomCode').textContent = roomCode;
             
@@ -665,10 +679,10 @@
                 toggleMasterUI();
 
                 if (data.players) {
-                    updateSpectatorBoard(data.players);
+                    updateSpectatorBoard(data.players, data.masterUid);
 
                     if (data.secretWord && !isResultsShown) {
-                        const participants = Object.entries(data.players).filter(([uid]) => uid !== data.masterUid);
+                        const participants = Object.entries(data.players).filter(([uid, p]) => uid !== data.masterUid && !p.spectator);
                         if (participants.length > 0) {
                             const allCompleted = participants.every(([uid, p]) => p.completed);
                             if (allCompleted) {
@@ -686,7 +700,21 @@
         function toggleMasterUI() {
             const submitBtn = document.getElementById('submitBtn');
             const noticeEl = document.getElementById('masterNotice');
-            document.getElementById('spectatorDashboard').classList.remove('hidden');
+            const dashEl = document.getElementById('spectatorDashboard');
+            dashEl.classList.remove('hidden');
+
+            // 관전 전용: 입력 보드/키보드를 숨기고 관전 보드를 크게 보여줌
+            document.getElementById('board').classList.toggle('hidden', isSpectator);
+            document.getElementById('keyboard').classList.toggle('hidden', isSpectator);
+            dashEl.classList.toggle('max-h-48', !isSpectator);
+            dashEl.classList.toggle('flex-1', isSpectator);
+            dashEl.classList.toggle('mt-2', isSpectator);
+
+            if (isSpectator) {
+                noticeEl.classList.remove('hidden');
+                noticeEl.textContent = "👀 관전 중이에요. 문제는 풀지 않고, 참가자들의 풀이를 실시간으로 볼 수 있어요.";
+                return;
+            }
 
             if (isMaster) {
                 noticeEl.classList.remove('hidden');
@@ -707,15 +735,18 @@
             }
         }
 
-        function updateSpectatorBoard(players) {
+        function updateSpectatorBoard(players, masterUid) {
             const listEl = document.getElementById('playerStatusList');
             const titleEl = document.getElementById('spectatorTitle');
             listEl.innerHTML = '';
 
-            if (isMaster) {
-                titleEl.textContent = "👁️ [출제자용] 참가자 입력 상세 관전 보드";
+            if (isMaster || isSpectator) {
+                titleEl.textContent = isSpectator
+                    ? "👁️ [관전자용] 참가자 입력 상세 관전 보드"
+                    : "👁️ [출제자용] 참가자 입력 상세 관전 보드";
                 for (const [uid, p] of Object.entries(players)) {
-                    if (uid === myUid) continue;
+                    if (uid === myUid || p.spectator) continue;      // 나 자신, 다른 관전자는 표시하지 않음
+                    if (isSpectator && uid === masterUid) continue;  // 관전자 화면에서는 출제자 줄도 제외
                     const div = document.createElement('div');
                     div.className = 'bg-white p-2.5 rounded-lg border border-slate-200 space-y-1';
                     
@@ -746,7 +777,7 @@
             } else {
                 titleEl.textContent = "👁️ 실시간 참가자 현황 관전 보드";
                 for (const [uid, p] of Object.entries(players)) {
-                    if (uid === myUid) continue;
+                    if (uid === myUid || p.spectator) continue;
                     const div = document.createElement('div');
                     div.className = 'bg-white p-2 rounded-lg border border-slate-100 flex items-center justify-between text-xs';
                     
@@ -767,11 +798,15 @@
                     listEl.appendChild(div);
                 }
             }
+
+            if (isSpectator && listEl.children.length === 0) {
+                listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">아직 문제를 푸는 참가자가 없어요. 잠시만 기다려주세요!</p>';
+            }
         }
 
         function showResultsModal(data) {
             const participantsList = Object.entries(data.players)
-                .filter(([uid]) => uid !== data.masterUid)
+                .filter(([uid, p]) => uid !== data.masterUid && !p.spectator)
                 .map(([uid, p]) => {
                     const solved = (p.guesses || []).includes(data.secretWord);
                     const attempts = solved ? p.guesses.length : 99;
@@ -821,6 +856,14 @@
                 notice.className = 'text-xs text-amber-600 font-semibold py-2';
                 notice.textContent = '⏳ 출제자가 다음 라운드를 진행하기를 기다리는 중입니다...';
                 actionContainer.appendChild(notice);
+
+                if (isSpectator) {
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'w-full mt-2 py-2.5 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-xl transition shadow-sm';
+                    closeBtn.textContent = '닫고 관전 보드 보기';
+                    closeBtn.onclick = () => document.getElementById('gameOverModal').classList.add('hidden');
+                    actionContainer.appendChild(closeBtn);
+                }
             }
 
             document.getElementById('gameOverModal').classList.remove('hidden');
@@ -834,8 +877,10 @@
                     const data = snapshot.val();
                     if (!data || !data.players) return;
                     const players = Object.keys(data.players);
-                    const currentIndex = players.indexOf(data.masterUid);
-                    const nextMasterUid = players[(currentIndex + 1) % players.length];
+                    // 관전자는 출제자가 될 수 없으므로 제외하고 순서대로 다음 출제자를 정함
+                    const eligible = players.filter(uid => !data.players[uid].spectator);
+                    const currentIndex = eligible.indexOf(data.masterUid);
+                    const nextMasterUid = eligible[(currentIndex + 1) % eligible.length];
                     const nextMasterName = data.players[nextMasterUid].nickname;
 
                     db.ref(`rooms/${currentRoomCode}`).update({
@@ -848,7 +893,7 @@
                     const updates = {};
                     players.forEach(uid => {
                         updates[`players/${uid}/guesses`] = [];
-                        updates[`players/${uid}/completed`] = (uid === nextMasterUid);
+                        updates[`players/${uid}/completed`] = (uid === nextMasterUid) || !!data.players[uid].spectator;
                         updates[`players/${uid}/solvedTimestamp`] = 0;
                     });
                     db.ref(`rooms/${currentRoomCode}`).update(updates);
