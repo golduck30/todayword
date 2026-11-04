@@ -14,14 +14,14 @@
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; user-select: none; }
         .tile {
-            width: 44px; height: 44px;
+            width: 100%; aspect-ratio: 1 / 1;
             display: flex; align-items: center; justify-content: center;
             font-size: 1.25rem; font-weight: 700; border-radius: 0.5rem;
             border: 2px solid #e2e8f0; background-color: #ffffff; color: #1e293b;
             transition: all 0.15s ease-in-out;
         }
         @media (min-width: 400px) {
-            .tile { width: 50px; height: 50px; font-size: 1.4rem; }
+            .tile { font-size: 1.4rem; }
         }
         .tile.correct { background-color: #4ade80 !important; border-color: #4ade80 !important; color: white !important; }
         .tile.present { background-color: #facc15 !important; border-color: #facc15 !important; color: white !important; }
@@ -45,12 +45,45 @@
             color: #ffffff !important;
             font-weight: 700;
         }
+
+        /* 글자 수별 타일 크기 (8칸까지 모바일에서도 들어가도록) */
+        .board-7 .tile { font-size: 1.15rem; }
+        .board-8 .tile { font-size: 1.02rem; border-radius: 0.4rem; border-width: 1.5px; }
+
+        /* 🥇 실시간 1등 닉네임 */
+        @keyframes leaderShine { to { background-position: 300% center; } }
+        @keyframes leaderGlow { 0%,100% { filter: drop-shadow(0 0 2px #fbbf24); } 50% { filter: drop-shadow(0 0 7px #f472b6); } }
+        .pname.leader-name {
+            font-weight: 900;
+            background-image: linear-gradient(90deg,#f59e0b,#ef4444,#ec4899,#8b5cf6,#06b6d4,#10b981,#f59e0b);
+            background-size: 300% auto;
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; color: transparent;
+            animation: leaderShine 3s linear infinite, leaderGlow 2s ease-in-out infinite;
+        }
+        .pname.leader-name::before { content: '🥇 '; -webkit-text-fill-color: initial; }
+        .pname.leader-name::after { content: ' ✨'; -webkit-text-fill-color: initial; }
+        .leader-msg .chat-bubble {
+            background: linear-gradient(135deg,#fef3c7,#fce7f3) !important; color: #78350f !important;
+            border: 1px solid #fbbf24 !important; box-shadow: 0 0 0 2px rgba(251,191,36,.3), 0 4px 14px rgba(236,72,153,.25);
+        }
+        .leader-msg .av { box-shadow: 0 0 0 2px #fbbf24, 0 0 10px rgba(251,191,36,.7); }
+
+        /* 🐾 캐릭터 */
+        .av { position: relative; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; line-height: 1; flex-shrink: 0; border: 1px solid rgba(0,0,0,.06); }
+        .av > span { position: absolute; line-height: 1; pointer-events: none; }
+        .av > .av-base { position: static; }
+        .av-hat, .av-face, .av-neck { left: 50%; transform: translateX(-50%); }
+        .shop-item { border: 2px solid #e2e8f0; border-radius: 0.75rem; padding: 0.5rem 0.25rem; text-align: center; background: #fff; cursor: pointer; transition: all .1s; }
+        .shop-item:active { transform: scale(0.96); }
+        .shop-item.equipped { border-color: #10b981; background: #ecfdf5; }
+        @keyframes popIn { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-slate-800">
 
     <!-- 상단 헤더 -->
-    <header class="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+    <header class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
         <div class="flex items-center space-x-2">
             <span class="px-2 py-1 bg-emerald-500 text-white font-black rounded text-lg tracking-wider">단</span>
             <h1 class="text-xl font-bold tracking-tight">오늘의 단어</h1>
@@ -62,7 +95,9 @@
                 <button onclick="setWordLength(5)" id="lenBtn-5" class="length-btn px-2 py-1 rounded-md transition active">5자</button>
                 <button onclick="setWordLength(6)" id="lenBtn-6" class="length-btn px-2 py-1 rounded-md transition">6자</button>
                 <button onclick="setWordLength(7)" id="lenBtn-7" class="length-btn px-2 py-1 rounded-md transition">7자</button>
+                <button onclick="setWordLength(8)" id="lenBtn-8" class="length-btn px-2 py-1 rounded-md transition">8자</button>
             </div>
+            <button id="profileBtn" onclick="openShop()" class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold text-amber-700 transition"></button>
             <button onclick="openLobbyModal()" class="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 <span id="roomBtnText">대결 방</span>
@@ -80,9 +115,18 @@
                 <div>출제자: <span id="dispMaster" class="font-bold text-emerald-700"></span></div>
             </div>
             <div id="masterNotice" class="text-xs text-amber-700 mt-1 font-medium hidden">🎯 첫 번째 줄 타일에 자모를 입력하고 [문제 출제] 버튼을 누르세요!</div>
+            <div id="timeSelectorRow" class="hidden mt-2">
+                <p class="text-[11px] font-bold text-amber-700 mb-1">⏱ 제한 시간 <span class="font-medium text-slate-500">(문제를 출제하는 순간부터 시작돼요)</span></p>
+                <div id="timeSelector" class="grid grid-cols-4 gap-1.5"></div>
+            </div>
+            <div id="timerRow" class="hidden mt-2">
+                <div class="text-sm font-black" id="timerText"></div>
+                <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1"><div id="timerBar" class="h-full bg-emerald-500" style="width:100%; transition: width 1s linear;"></div></div>
+            </div>
             <div id="dispHostRow" class="hidden text-sm mt-1">방장: <span id="dispHost" class="font-bold text-amber-600"></span></div>
             <div id="roomActions" class="hidden mt-2">
                 <div class="flex flex-wrap gap-2">
+                    <span id="invalidBadge" class="hidden self-center text-xs font-bold text-rose-600"></span>
                     <button id="hostBtn" onclick="openHostModal()" class="hidden px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition">👑 방 관리</button>
                     <button id="hintReqBtn" onclick="requestHint()" class="hidden px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition">💡 힌트 요청</button>
                     <button id="leaveBtn" onclick="leaveRoom()" class="px-3 py-1.5 bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition">🚪 나가기</button>
@@ -90,6 +134,13 @@
             </div>
             <div id="hintBanner" onclick="reopenHintModal()" class="hidden mt-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1.5 cursor-pointer"></div>
             <div id="hintBar" class="hidden mt-2 flex items-center gap-1 flex-wrap"></div>
+            <div id="rankPanel" class="hidden mt-3 pt-2 border-t border-emerald-200">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black text-emerald-800">🏆 실시간 순위 <span class="font-medium text-slate-400">(누적 점수)</span></span>
+                    <button id="rankToggleBtn" onclick="toggleRankExpand()" class="hidden text-[11px] font-bold text-emerald-700"></button>
+                </div>
+                <div id="rankList" class="space-y-1"></div>
+            </div>
         </div>
 
         <!-- 메인 게임 보드 -->
@@ -97,6 +148,11 @@
 
         <!-- 실시간 관전 대시보드 -->
         <div id="spectatorDashboard" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 hidden max-h-48 overflow-y-auto">
+            <div id="answerReveal" class="hidden mb-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                <p class="text-[11px] text-amber-700 font-bold mb-1">🔓 정답 공개 <span class="font-medium">(풀이를 마친 사람만 볼 수 있어요 · 다른 사람에겐 비밀! 🤫)</span></p>
+                <div id="answerTiles" class="flex justify-center gap-1"></div>
+                <p id="answerWord" class="text-sm font-black text-amber-800 mt-1"></p>
+            </div>
             <p id="spectatorTitle" class="text-xs font-bold text-slate-700 mb-2">👁️ 실시간 참가자 현황 관전 보드</p>
             <div id="spectatorChips" class="flex-wrap gap-1 mb-2" style="display:none"></div>
             <div id="playerStatusList" class="space-y-2"></div>
@@ -205,6 +261,7 @@
             </div>
             <p class="text-[11px] text-slate-500 mb-3">출제자를 바꾸면 이번 라운드가 처음부터 다시 시작돼요. 강퇴하면 그 사람은 방에서 나가게 되고, 방 코드를 입력하면 다시 들어올 수 있어요.</p>
             <div id="hostPlayerList" class="space-y-2 overflow-y-auto"></div>
+            <button onclick="hostResetScores()" class="mt-3 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">🔄 모든 참가자 누적 점수 초기화</button>
         </div>
     </div>
 
@@ -218,6 +275,26 @@
             <p id="hintModalDesc" class="text-xs text-slate-500 mt-1 mb-3"></p>
             <div id="hintVoteControls"></div>
             <p id="hintModalStatus" class="text-[11px] text-slate-500 mt-3 text-center"></p>
+        </div>
+    </div>
+
+    <!-- 캐릭터 상점 모달 -->
+    <div id="shopModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl max-h-[88vh] flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-lg font-black text-slate-800">🐾 내 캐릭터 꾸미기</h3>
+                <button onclick="closeShop()" class="text-slate-400 hover:text-slate-600 text-sm font-semibold">닫기</button>
+            </div>
+            <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-xl mb-3">
+                <div id="shopPreview" class="shrink-0 pt-4 pl-1 pr-5"></div>
+                <div class="flex-1">
+                    <p class="text-xs text-slate-500">내 코인</p>
+                    <p id="shopCoins" class="text-2xl font-black text-amber-600"></p>
+                    <p class="text-[11px] text-slate-400 mt-1">라운드에서 얻은 점수가 그대로 코인이 돼요!</p>
+                </div>
+            </div>
+            <div id="shopTabs" class="flex gap-1 mb-2 overflow-x-auto"></div>
+            <div id="shopGrid" class="grid grid-cols-3 gap-2 overflow-y-auto pr-1"></div>
         </div>
     </div>
 
@@ -283,6 +360,23 @@
         let hintModalDismissedId = null;
         let hintRenderSig = '';
         let hintBannerTimer = null;
+
+        // 타임어택 / 점수 / 경고 상태
+        const WORD_LENGTHS = [5, 6, 7, 8];
+        const TIME_LIMIT_OPTIONS = [{ sec: 120, label: '2분' }, { sec: 240, label: '4분' }, { sec: 360, label: '6분' }, { sec: 0, label: '무제한' }];
+        const INVALID_KICK_LIMIT = 5;      // 잘못된 제출(사전에 없는 단어/미완성 글자) 누적 횟수 → 자동 퇴장
+        const KICK_COOLDOWN_SEC = 30;      // 자동 퇴장 후 재입장 대기 시간
+        let selectedTimeLimit = 0;
+        let invalidCount = 0;
+        let timedOut = false;
+        let timerInterval = null;
+        let timeUpKey = null;
+        let leaderUids = new Set();
+        let leaderInit = false;
+        let myPrevRank = null;
+        let rankExpanded = false;
+        let toastTimer = null;
+        let lastCoinKey = null;
 
         // 서버 시간 보정
         let serverOffset = 0;
@@ -359,6 +453,8 @@
 
         function setWordLength(len) {
             if (isSpectator) { showToast("관전 중에는 글자 수를 바꿀 수 없어요."); return; }
+            if (currentRoomCode && !isMaster) { showToast("글자 수는 출제자만 바꿀 수 있어요."); return; }
+            if (currentRoomCode && hasMasterSetWord) { showToast("이미 출제했어요. 글자 수는 다음 라운드에 바꿀 수 있어요."); return; }
             if (submittedGuesses.length > 0 || (isMaster && makerWord.length > 0)) {
                 if (!confirm("글자 수를 변경하면 진행 중인 입력이 초기화됩니다. 변경하시겠습니까?")) return;
             }
@@ -374,8 +470,9 @@
 
         function initBoard() {
             boardEl.innerHTML = '';
-            boardEl.className = `grid grid-rows-5 gap-2 my-auto`;
-            
+            boardEl.className = `grid grid-rows-5 gap-2 my-auto board-${wordLength}`;
+            boardEl.style.width = `min(100%, ${wordLength * 52 + (wordLength - 1) * 8}px)`;
+
             for (let i = 0; i < maxGuesses; i++) {
                 const row = document.createElement('div');
                 row.className = `grid gap-2`;
@@ -463,14 +560,17 @@
 
         function syncMyProgress() {
             if (!db || !currentRoomCode || isMaster || isSpectator) return;
-            const isCompleted = (!!secretWord && submittedGuesses.includes(secretWord)) || submittedGuesses.length >= maxGuesses;
+            const solved = !!secretWord && submittedGuesses.includes(secretWord);
+            const isCompleted = solved || submittedGuesses.length >= maxGuesses || timedOut;
             const updateData = {
                 nickname: myNickname,
                 guesses: submittedGuesses,
-                completed: isCompleted
+                completed: isCompleted,
+                timedOut: timedOut ? true : null,
+                avatar: myAvatar()
             };
-            if (secretWord && submittedGuesses.includes(secretWord) && !solvedTimestamp) {
-                solvedTimestamp = Date.now();
+            if (solved && !solvedTimestamp) {
+                solvedTimestamp = serverNow();
                 updateData.solvedTimestamp = solvedTimestamp;
             }
             db.ref(`rooms/${currentRoomCode}/players/${myUid}`).update(updateData);
@@ -560,7 +660,6 @@
                     showToast("이미 출제가 완료되었습니다!");
                     return;
                 }
-                // [업그레이드 1] 참가자가 최소 1명 이상 있어야 출제 가능
                 if (getActiveParticipantCount() === 0) {
                     showToast("아직 문제를 풀 참가자가 없어요! 참가자가 입장한 뒤에 출제해주세요.");
                     return;
@@ -581,9 +680,17 @@
                     showToast("서버에 연결되지 않아 출제할 수 없습니다.");
                     return;
                 }
-                db.ref(`rooms/${currentRoomCode}`).update({ secretWord: makerWord, targetLength: wordLength, hintState: null, left: null });
+                db.ref(`rooms/${currentRoomCode}`).update({
+                    secretWord: makerWord,
+                    targetLength: wordLength,
+                    timeLimit: selectedTimeLimit,
+                    startedAt: firebase.database.ServerValue.TIMESTAMP,
+                    hintState: null,
+                    left: null
+                });
                 hasMasterSetWord = true;
-                showToast(`🎯 문제가 출제되었습니다! (${assemblePreview(makerWord)})`);
+                const tl = TIME_LIMIT_OPTIONS.find(o => o.sec === selectedTimeLimit);
+                showToast(`🎯 문제가 출제되었습니다! (${assemblePreview(makerWord)}) · ⏱ ${tl ? tl.label : '무제한'}`);
                 toggleMasterUI();
                 renderBoard();
                 return;
@@ -603,12 +710,12 @@
             }
 
             if (!isValidJamoSequence(currentGuess)) {
-                showToast(`완성되지 않은 글자가 있어요! (${assemblePreview(currentGuess)})`);
+                registerInvalid(`완성되지 않은 글자가 있어요! (${assemblePreview(currentGuess)})`);
                 return;
             }
 
             if (currentGuess !== secretWord && !isDictionaryWord(currentGuess)) {
-                showToast(`사전에 없는 단어예요! (${assemblePreview(currentGuess)})`);
+                registerInvalid(`사전에 없는 단어예요! (${assemblePreview(currentGuess)})`);
                 return;
             }
 
@@ -625,18 +732,49 @@
                 if (newGuess === secretWord) {
                     showToast("정답을 맞췄습니다! 다른 참가자들을 기다리는 중...");
                 } else {
-                    showToast("모든 기회를 소모했습니다. 다른 참가자들을 기다리는 중...");
+                    showToast("😢 아쉽게 실패! 아래에서 정답을 확인할 수 있어요.", 3000);
                 }
             } else {
                 showToast(`${submittedGuesses.length}번째 시도 완료! 다음 단어를 입력하세요.`);
             }
         }
 
-        function showToast(msg) {
+        // 막 입력(사전에 없는 단어 / 미완성 글자) 누적 경고 → 5회면 자동 퇴장
+        function registerInvalid(msg) {
+            invalidCount++;
+            updateInvalidBadge();
+            if (invalidCount >= INVALID_KICK_LIMIT) { autoKickSelf(); return; }
+            if (invalidCount >= 3) {
+                showToast(`${msg} · ⚠️ 잘못된 제출 ${invalidCount}/${INVALID_KICK_LIMIT}회! ${INVALID_KICK_LIMIT}회가 되면 방에서 나가게 돼요`, 3200);
+            } else {
+                showToast(`${msg} (잘못된 제출 ${invalidCount}/${INVALID_KICK_LIMIT})`, 2600);
+            }
+        }
+
+        function updateInvalidBadge() {
+            const el = document.getElementById('invalidBadge');
+            if (currentRoomCode && invalidCount > 0 && !isMaster && !isSpectator) {
+                el.textContent = `⚠️ 잘못된 제출 ${invalidCount}/${INVALID_KICK_LIMIT}`;
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+
+        function autoKickSelf() {
+            if (!currentRoomCode || isMaster || isSpectator) return;
+            const code = currentRoomCode;
+            try { localStorage.setItem('wordle_kick_' + code, String(Date.now() + KICK_COOLDOWN_SEC * 1000)); } catch (e) {}
+            performLeave();
+            alert(`잘못된 제출(사전에 없는 단어·미완성 글자)이 ${INVALID_KICK_LIMIT}회 쌓여서 방에서 나가게 됐어요. 😅\n${KICK_COOLDOWN_SEC}초 뒤에 방 코드로 다시 들어올 수 있고, 점수는 이어져요.`);
+        }
+
+        function showToast(msg, ms) {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
             toast.classList.remove('opacity-0');
-            setTimeout(() => toast.classList.add('opacity-0'), 2000);
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('opacity-0'), ms || 2200);
         }
 
         function openLobbyModal() {
@@ -669,7 +807,7 @@
                 hostName: myNickname,
                 round: 1,
                 players: {
-                    [myUid]: { nickname: myNickname, guesses: [], completed: true, solvedTimestamp: 0 }
+                    [myUid]: { nickname: myNickname, guesses: [], completed: true, solvedTimestamp: 0, score: 0, avatar: myAvatar() }
                 }
             }).then(() => {
                 closeLobbyModal();
@@ -687,9 +825,14 @@
             db.ref(`rooms/${roomCode}`).once('value', snapshot => {
                 const room = snapshot.val();
                 if (!room) { alert("존재하지 않는 방입니다."); return; }
+                try {
+                    const until = parseInt(localStorage.getItem('wordle_kick_' + roomCode) || '0', 10);
+                    if (until > Date.now()) { alert(`잠시 쉬었다 오세요! ${Math.ceil((until - Date.now()) / 1000)}초 후에 다시 입장할 수 있어요.`); return; }
+                } catch (e) {}
 
                 const players = room.players || {};
                 const left = room.left || {};
+                const scoreArch = room.scoreArchive || {};
 
                 let prev = null, prevUid = null, prevFromArchive = false, takeover = false;
                 if (players[myUid]) { prev = players[myUid]; prevUid = myUid; }
@@ -705,6 +848,13 @@
                 }
                 if (takeover && !confirm(`'${nick}' 닉네임으로 이미 참여 중인 사람이 있어요.\n나갔다가 다시 들어온 거라면 [확인]을 눌러 이어서 진행하세요.\n다른 사람이라면 [취소]를 누르고 닉네임을 바꿔주세요.`)) return;
 
+                // 누적 점수 복원 (이전 기록 / 나갔다 돌아온 경우)
+                let prevScore = 0, scoreRestoreUid = null;
+                if (prev && typeof prev.score === 'number') prevScore = prev.score;
+                else {
+                    const au = scoreArch[myUid] ? myUid : Object.keys(scoreArch).find(u => scoreArch[u] && scoreArch[u].nickname === nick);
+                    if (au) { prevScore = scoreArch[au].score || 0; scoreRestoreUid = au; }
+                }
                 const joiningAsMaster = (room.masterUid === myUid) || (takeover && room.masterUid === prevUid);
                 if (asSpectator && joiningAsMaster) {
                     alert("현재 출제자는 관전 전용으로 입장할 수 없어요. [참여하기]로 입장해주세요.");
@@ -744,7 +894,9 @@
                         completed: completed,
                         solvedTimestamp: resume ? resume.solvedTimestamp : 0,
                         spectator: newSpectator,
-                        waiting: lateJoin ? true : null
+                        waiting: lateJoin ? true : null,
+                        score: prevScore,
+                        avatar: myAvatar()
                     },
                     [`kicked/${myUid}`]: null
                 };
@@ -755,6 +907,7 @@
                     if (room.hostUid === prevUid) { updates.hostUid = myUid; updates.hostName = nick; }
                 }
                 if (prevFromArchive) updates[`left/${prevUid}`] = null;
+                if (scoreRestoreUid) updates[`scoreArchive/${scoreRestoreUid}`] = null;
                 db.ref(`rooms/${roomCode}`).update(updates);
 
                 closeLobbyModal();
@@ -769,7 +922,7 @@
         }
 
         function setWordLengthUI(len) {
-            [5, 6, 7].forEach(l => {
+            WORD_LENGTHS.forEach(l => {
                 const btn = document.getElementById(`lenBtn-${l}`);
                 if (l === len) btn.classList.add('active');
                 else btn.classList.remove('active');
@@ -830,6 +983,8 @@
 
                 toggleMasterUI();
                 updateRoomChrome(data);
+                updateScoreboard(data);
+                updateTimerUI();
 
                 if (data.players) {
                     updateSpectatorBoard(data.players, data.masterUid);
@@ -858,12 +1013,15 @@
             toggleMasterUI();
             updateHintButton();
             initChat(roomCode); // [업그레이드 3] 채팅방 연결
+            leaderUids = new Set(); leaderInit = false; myPrevRank = null; rankExpanded = false;
+            startTimerLoop();
         }
 
         function toggleMasterUI() {
             const submitBtn = document.getElementById('submitBtn');
             const noticeEl = document.getElementById('masterNotice');
             const dashEl = document.getElementById('spectatorDashboard');
+            const timeRow = document.getElementById('timeSelectorRow');
             dashEl.classList.remove('hidden');
 
             const finished = !!currentRoomCode && !isSpectator && !isMaster && isGameOver;
@@ -874,6 +1032,11 @@
             dashEl.classList.toggle('max-h-48', !bigDash);
             dashEl.classList.toggle('flex-1', bigDash);
             dashEl.classList.toggle('mt-2', bigDash);
+
+            const showTimeSel = !!currentRoomCode && isMaster && !hasMasterSetWord && !isSpectator;
+            timeRow.classList.toggle('hidden', !showTimeSel);
+            if (showTimeSel) renderTimeSelector();
+            updateInvalidBadge();
 
             if (isSpectator) {
                 const meRec = lastRoomData && lastRoomData.players && lastRoomData.players[myUid];
@@ -895,22 +1058,53 @@
                     : "key flex-[2] py-3 bg-slate-400 text-white font-bold pointer-events-none";
 
                 if (hasMasterSetWord) {
-                    noticeEl.textContent = "🎯 정답 출제 완료! 참가자들의 풀이를 기다리는 중...";
+                    noticeEl.textContent = "🎯 정답 출제 완료! 참가자들의 풀이를 기다리는 중... (못 푼 참가자 1명당 +15점 보너스!)";
                 } else if (pCount === 0) {
                     noticeEl.textContent = "⏳ 참가자가 방에 입장하면 문제를 출제할 수 있어요! (방 코드를 공유하세요)";
                 } else {
-                    noticeEl.textContent = `🎯 첫 번째 줄 타일에 ${wordLength}자모를 입력하고 [문제 출제] 버튼을 누르세요!`;
+                    noticeEl.textContent = `🎯 첫 번째 줄 타일에 ${wordLength}자모를 입력하고, 제한 시간을 고른 뒤 [문제 출제]를 누르세요!`;
                 }
             } else {
                 if (finished) {
                     noticeEl.classList.remove('hidden');
-                    noticeEl.textContent = "🎉 풀이 완료! 아래에서 다른 참가자들의 풀이를 관전하며 기다려 보세요.";
+                    const solved = !!secretWord && submittedGuesses.includes(secretWord);
+                    noticeEl.textContent = solved
+                        ? "🎉 풀이 완료! 아래에서 다른 참가자들을 관전하며 기다려 보세요."
+                        : (timedOut
+                            ? "⏰ 시간 초과! 정답을 확인하고 다른 참가자들을 관전해 보세요."
+                            : "😢 아쉽게 실패! 정답을 확인하고 다른 참가자들을 관전해 보세요.");
                 } else {
                     noticeEl.classList.add('hidden');
                 }
                 submitBtn.textContent = "제출";
                 submitBtn.className = "key flex-[2] py-3 bg-emerald-600 text-white font-bold";
             }
+        }
+
+        function renderTimeSelector() {
+            document.getElementById('timeSelector').innerHTML = TIME_LIMIT_OPTIONS.map(o =>
+                `<button onclick="setTimeLimit(${o.sec})" class="py-1.5 rounded-lg border text-xs font-bold transition ${selectedTimeLimit === o.sec ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}">${o.label}</button>`
+            ).join('');
+        }
+
+        function setTimeLimit(sec) {
+            if (hasMasterSetWord) return;
+            selectedTimeLimit = sec;
+            renderTimeSelector();
+        }
+
+        // 풀이를 마친 참가자(성공/실패/시간초과)만 정답을 볼 수 있어요
+        function canSeeAnswer() {
+            return !!currentRoomCode && !isMaster && !isSpectator && isGameOver && !!secretWord;
+        }
+
+        function renderAnswerReveal() {
+            const el = document.getElementById('answerReveal');
+            if (!canSeeAnswer()) { el.classList.add('hidden'); return; }
+            document.getElementById('answerTiles').innerHTML = secretWord.split('').map(c =>
+                `<div class="w-7 h-7 rounded-md bg-amber-400 text-white font-bold flex items-center justify-center text-sm">${escapeHtml(c)}</div>`).join('');
+            document.getElementById('answerWord').textContent = assemblePreview(secretWord);
+            el.classList.remove('hidden');
         }
 
         function escapeHtml(str) {
@@ -939,6 +1133,8 @@
             const titleEl = document.getElementById('spectatorTitle');
             listEl.innerHTML = '';
             renderSpectatorChips(players);
+            renderAnswerReveal();
+            const avOf = p => avatarHtml(sanitizeAv(p.avatar), 22);
 
             if (isMaster || canSeeDetail()) {
                 titleEl.textContent = isMaster
@@ -949,11 +1145,13 @@
                     if (!isMaster && uid === masterUid) continue;
                     const div = document.createElement('div');
                     div.className = 'bg-white p-2.5 rounded-lg border border-slate-200 space-y-1';
-                    
-                    let rowsHtml = `<div class="font-bold text-xs text-slate-700 flex justify-between"><span>${crown(uid)}${escapeHtml(p.nickname)}</span> ${p.completed ? '<span class="text-emerald-600 font-semibold">풀이 완료</span>' : '<span class="text-amber-500">풀이 중...</span>'}</div>`;
+
+                    const status = p.timedOut ? '<span class="text-rose-500 font-semibold">시간 초과</span>'
+                        : (p.completed ? '<span class="text-emerald-600 font-semibold">풀이 완료</span>' : '<span class="text-amber-500">풀이 중...</span>');
+                    let rowsHtml = `<div class="font-bold text-xs text-slate-700 flex justify-between items-center"><span class="flex items-center gap-1.5 mt-1">${avOf(p)}${nameHtml(uid, p.nickname)}</span> ${status}</div>`;
                     rowsHtml += '<div class="space-y-1">';
-                    
-                    const pGuesses = p.guesses || [];
+
+                    const pGuesses = toArr(p.guesses);
                     for (let i = 0; i < maxGuesses; i++) {
                         const g = pGuesses[i] || "";
                         const evalRes = evaluateGuess(g, secretWord);
@@ -966,7 +1164,7 @@
                                 else if (evalRes[j] === 'present') tileColor = 'bg-amber-400 border-amber-400 text-white font-bold';
                                 else tileColor = 'bg-slate-400 border-slate-400 text-white font-bold';
                             }
-                            rowsHtml += `<div class="w-5 h-5 border rounded flex items-center justify-center text-[10px] ${tileColor}">${char}</div>`;
+                            rowsHtml += `<div class="w-5 h-5 border rounded flex items-center justify-center text-[10px] ${tileColor}">${escapeHtml(char)}</div>`;
                         }
                         rowsHtml += '</div>';
                     }
@@ -980,9 +1178,9 @@
                     if (uid === myUid || p.spectator) continue;
                     const div = document.createElement('div');
                     div.className = 'bg-white p-2 rounded-lg border border-slate-100 flex items-center justify-between text-xs';
-                    
+
                     let miniGridHtml = '<div class="flex space-x-1">';
-                    const pGuesses = p.guesses || [];
+                    const pGuesses = toArr(p.guesses);
                     for (let i = 0; i < maxGuesses; i++) {
                         const g = pGuesses[i] || "";
                         let colorClass = 'bg-slate-100 border border-slate-200';
@@ -994,7 +1192,7 @@
                     }
                     miniGridHtml += '</div>';
 
-                    div.innerHTML = `<span class="font-bold text-slate-700">${crown(uid)}${escapeHtml(p.nickname)}</span> ${miniGridHtml}`;
+                    div.innerHTML = `<span class="font-bold text-slate-700 flex items-center gap-1.5 mt-1">${avOf(p)}${nameHtml(uid, p.nickname)}</span> ${miniGridHtml}`;
                     listEl.appendChild(div);
                 }
             }
@@ -1002,46 +1200,80 @@
             if (canSeeDetail() && listEl.children.length === 0) {
                 listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">아직 문제를 푸는 참가자가 없어요. 잠시만 기다려주세요!</p>';
             }
+            applyLeaderStyles();
         }
 
         function showResultsModal(data) {
-            const participantsList = Object.entries(data.players)
+            const rs = calcRoundScores(data);
+            const list = Object.entries(data.players)
                 .filter(([uid, p]) => uid !== data.masterUid && !p.spectator)
                 .map(([uid, p]) => {
-                    const solved = (p.guesses || []).includes(data.secretWord);
-                    const attempts = solved ? p.guesses.length : 99;
-                    const timestamp = p.solvedTimestamp || 9999999999999;
-                    return { uid, nickname: p.nickname, solved, attempts, timestamp };
+                    const g = toArr(p.guesses);
+                    const solved = g.includes(data.secretWord);
+                    return {
+                        uid, nickname: p.nickname, avatar: p.avatar, solved,
+                        attempts: solved ? g.indexOf(data.secretWord) + 1 : 99,
+                        timestamp: p.solvedTimestamp || 9999999999999,
+                        timedOut: !!p.timedOut,
+                        pts: (rs[uid] && rs[uid].total) || 0
+                    };
                 });
 
-            participantsList.sort((a, b) => {
+            list.sort((a, b) => {
                 if (a.solved && !b.solved) return -1;
                 if (!a.solved && b.solved) return 1;
-                if (a.attempts !== b.attempts) {
-                    return a.attempts - b.attempts;
-                }
+                if (a.attempts !== b.attempts) return a.attempts - b.attempts;
                 return a.timestamp - b.timestamp;
             });
 
             document.getElementById('gameOverTitle').textContent = "🏆 라운드 결과지";
             const descEl = document.getElementById('gameOverDesc');
-            
+
             const readableWord = assemblePreview(data.secretWord);
-            let html = `<p class="text-xs text-slate-500 mb-3">정답: <span class="font-bold text-emerald-600">[ ${data.secretWord}${readableWord ? ' (' + readableWord + ')' : ''} ]</span></p>`;
-            html += `<div class="space-y-2 text-left max-h-48 overflow-y-auto mb-4">`;
-            
-            participantsList.forEach((p, idx) => {
-                const rankText = idx === 0 && p.solved ? "👑 1위" : `${idx + 1}위`;
-                const statusText = p.solved ? `${p.attempts}회 만에 정답! 🎉` : `실패 😢`;
+            let html = `<p class="text-xs text-slate-500 mb-3">정답: <span class="font-bold text-emerald-600">[ ${escapeHtml(data.secretWord)}${readableWord ? ' (' + escapeHtml(readableWord) + ')' : ''} ]</span></p>`;
+            html += `<div class="space-y-1.5 text-left max-h-44 overflow-y-auto mb-3">`;
+
+            list.forEach((p, idx) => {
+                const rankText = idx === 0 && p.solved ? "👑" : `${idx + 1}위`;
+                const statusText = p.solved ? `${p.attempts}회 정답 🎉` : (p.timedOut ? '시간 초과 ⏰' : '실패 😢');
                 html += `
-                    <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
-                        <span class="font-bold text-slate-700">${rankText} - ${crown(p.uid)}${escapeHtml(p.nickname)}</span>
-                        <span class="${p.solved ? 'text-emerald-600 font-semibold' : 'text-slate-400'}">${statusText}</span>
-                    </div>
-                `;
+                    <div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                        <span class="font-bold text-slate-700 flex items-center gap-1.5 mt-1 min-w-0"><span class="shrink-0">${rankText}</span>${avatarHtml(sanitizeAv(p.avatar), 22)}${nameHtml(p.uid, p.nickname)}</span>
+                        <span class="shrink-0 ${p.solved ? 'text-emerald-600 font-semibold' : 'text-slate-400'}">${statusText} <b class="${p.pts > 0 ? 'text-amber-600' : ''}">+${p.pts}</b></span>
+                    </div>`;
+            });
+            const mRs = rs[data.masterUid];
+            if (mRs && mRs.master) {
+                const mp = data.players[data.masterUid];
+                html += `<div class="flex items-center justify-between p-2 rounded-lg bg-amber-50 border border-amber-100 text-xs">
+                    <span class="font-bold text-amber-700 flex items-center gap-1.5 mt-1">🎯 출제자 ${avatarHtml(sanitizeAv(mp && mp.avatar), 22)}${nameHtml(data.masterUid, mp ? mp.nickname : '')}</span>
+                    <span class="text-amber-700 font-semibold">난이도 보너스 <b>+${mRs.master}</b></span></div>`;
+            }
+            html += `</div>`;
+
+            const my = rs[myUid];
+            if (my) {
+                const parts = my.role === 'master' ? [`출제 보너스 +${my.master}`] :
+                    [`기본 ${my.base}`, my.speed ? `스피드 +${my.speed}` : '', my.time ? `시간 +${my.time}` : '', my.hint ? `힌트 -${my.hint}` : ''].filter(Boolean);
+                html += `<p class="text-[11px] text-slate-500 mb-2">내 점수 <b class="text-amber-600">+${my.total}</b> (${parts.join(' · ')})</p>`;
+            }
+
+            const st = withRanks(getStandings(data)).slice(0, 8);
+            html += `<p class="text-xs font-black text-slate-700 text-left mb-1">📊 누적 순위 <span class="font-medium text-slate-400">(이번 라운드 반영)</span></p><div class="space-y-1 text-left max-h-36 overflow-y-auto mb-4">`;
+            st.forEach(x => {
+                html += `<div class="flex items-center justify-between p-1.5 rounded-lg ${x.uid === myUid ? 'bg-emerald-50' : 'bg-white'} border border-slate-100 text-xs">
+                    <span class="flex items-center gap-1.5 mt-1"><span class="w-5 text-center font-black">${x.total > 0 ? rankMedal(x.rank) : x.rank}</span>${avatarHtml(sanitizeAv(x.avatar), 20)}${nameHtml(x.uid, x.nickname)}</span>
+                    <span class="font-black tabular-nums">${x.total}점</span></div>`;
             });
             html += `</div>`;
+
+            const earned = my ? my.total : 0;
+            if (earned > 0) {
+                const key = `${currentRoomCode}:${data.round || 1}:${data.secretWord}`;
+                if (awardCoinsOnce(key, earned)) html += `<p class="text-sm font-black text-amber-600 mb-3 -mt-1">🪙 코인 +${earned} 획득!</p>`;
+            }
             descEl.innerHTML = html;
+            applyLeaderStyles();
 
             const actionContainer = document.getElementById('gameOverActionContainer');
             actionContainer.innerHTML = '';
@@ -1070,22 +1302,27 @@
             document.getElementById('gameOverModal').classList.remove('hidden');
         }
 
-        function startRound(data, nextMasterUid, incrementRound, extra) {
+        // commitScores = true 이면 방금 끝난 라운드 점수를 누적 점수에 반영 (정상적인 '다음 라운드'일 때만)
+        function startRound(data, nextMasterUid, commitScores, extra) {
             if (!db || !currentRoomCode || !data || !data.players || !data.players[nextMasterUid]) return;
+            const roundScores = commitScores ? calcRoundScores(data) : {};
             const updates = {
                 secretWord: "",
                 masterUid: nextMasterUid,
                 masterName: data.players[nextMasterUid].nickname,
                 hintState: null,
+                timeLimit: null,
+                startedAt: null,
                 left: null
             };
-            if (incrementRound) updates.round = (data.round || 1) + 1;
             Object.keys(data.players).forEach(uid => {
                 const p = data.players[uid];
                 const willPlay = !p.spectator || !!p.waiting;
                 updates[`players/${uid}/guesses`] = [];
                 updates[`players/${uid}/completed`] = (uid === nextMasterUid) || !willPlay;
                 updates[`players/${uid}/solvedTimestamp`] = 0;
+                updates[`players/${uid}/timedOut`] = null;
+                if (commitScores && roundScores[uid]) updates[`players/${uid}/score`] = (p.score || 0) + roundScores[uid].total;
                 if (p.waiting) {
                     updates[`players/${uid}/spectator`] = false;
                     updates[`players/${uid}/waiting`] = null;
@@ -1109,7 +1346,7 @@
                 const expected = data.round || 1;
                 db.ref(`rooms/${currentRoomCode}/round`).transaction(
                     cur => (cur === null) ? expected + 1 : (cur === expected ? expected + 1 : undefined),
-                    (err, committed) => { if (committed) startRound(data, nextMasterUid, false); }
+                    (err, committed) => { if (committed) startRound(data, nextMasterUid, true); }
                 );
             });
         }
@@ -1121,11 +1358,14 @@
             isGameOver = false;
             isResultsShown = false;
             solvedTimestamp = null;
+            timedOut = false;
+            invalidCount = 0;
             makerWord = "";
             hasMasterSetWord = false;
             document.getElementById('gameOverModal').classList.add('hidden');
             initBoard();
             renderBoard();
+            updateInvalidBadge();
             if (!(opts && opts.skipSync)) syncMyProgress();
             updateHintButton();
         }
@@ -1191,9 +1431,19 @@
             if (!confirm(`${p ? p.nickname : '이 사용자'}님을 방에서 내보낼까요?\n(방 코드를 입력하면 다시 들어올 수 있어요.)`)) return;
             db.ref(`rooms/${currentRoomCode}`).update({
                 [`players/${uid}`]: null,
+                [`scoreArchive/${uid}`]: (p && (p.score || 0) > 0) ? { nickname: p.nickname, score: p.score } : null,
                 [`kicked/${uid}`]: true
             });
             showToast("방에서 내보냈어요.");
+        }
+
+        function hostResetScores() {
+            if (!isHost || !db || !currentRoomCode || !lastRoomData || !lastRoomData.players) return;
+            if (!confirm('모든 참가자의 누적 점수를 0점으로 초기화할까요?')) return;
+            const ups = { scoreArchive: null };
+            Object.keys(lastRoomData.players).forEach(u => { ups[`players/${u}/score`] = 0; });
+            db.ref(`rooms/${currentRoomCode}`).update(ups);
+            showToast('누적 점수를 초기화했어요.');
         }
 
         function hostSetMaster(uid) {
@@ -1219,11 +1469,15 @@
 
         function leaveRoomLocal() {
             cleanupChat(currentRoomCode); // [업그레이드 3] 채팅방 정리
+            stopTimerLoop();
+            invalidCount = 0; timedOut = false; timeUpKey = null;
+            leaderUids = new Set(); leaderInit = false; myPrevRank = null;
+            document.getElementById('shopModal').classList.add('hidden');
             currentRoomCode = null;
             isMaster = false; isSpectator = false; isHost = false;
             hostUid = null; lastRoomData = null; secretWord = "";
             if (hintTimer) { clearInterval(hintTimer); hintTimer = null; }
-            ['hintModal', 'hostModal', 'gameOverModal', 'hintBanner', 'hintBar', 'multiplayerInfo', 'spectatorDashboard']
+            ['hintModal', 'hostModal', 'gameOverModal', 'hintBanner', 'hintBar', 'multiplayerInfo', 'spectatorDashboard', 'timerRow', 'rankPanel', 'timeSelectorRow', 'answerReveal', 'invalidBadge']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById('board').classList.remove('hidden');
             document.getElementById('keyboard').classList.remove('hidden');
@@ -1510,21 +1764,33 @@
 
         function refreshRoomView() {
             toggleMasterUI();
+            renderAnswerReveal();
             if (lastRoomData && lastRoomData.players) updateSpectatorBoard(lastRoomData.players, lastRoomData.masterUid);
         }
 
         function leaveRoom() {
+            if (!db || !currentRoomCode) return;
+            const data = lastRoomData;
+            const players = (data && data.players) || {};
+            const others = Object.keys(players).filter(u => u !== myUid);
+
+            let msg = '방에서 나갈까요?';
+            if (isMaster && others.length > 0) msg += '\n(출제자가 나가면 이번 라운드가 처음부터 다시 시작돼요.)';
+            else if (!isSpectator && !isMaster && secretWord) msg += '\n(같은 닉네임으로 다시 들어오면 이어서 풀 수 있어요.)';
+            if (!confirm(msg)) return;
+
+            performLeave();
+            showToast("방에서 나왔어요.");
+        }
+
+        function performLeave() {
             if (!db || !currentRoomCode) return;
             const code = currentRoomCode;
             const data = lastRoomData;
             const players = (data && data.players) || {};
             const others = Object.keys(players).filter(u => u !== myUid);
             const othersPlaying = others.filter(u => !players[u].spectator);
-
-            let msg = '방에서 나갈까요?';
-            if (isMaster && others.length > 0) msg += '\n(출제자가 나가면 이번 라운드가 처음부터 다시 시작돼요.)';
-            else if (!isSpectator && !isMaster && secretWord) msg += '\n(같은 닉네임으로 다시 들어오면 이어서 풀 수 있어요.)';
-            if (!confirm(msg)) return;
+            const myScore = (players[myUid] && players[myUid].score) || 0;
 
             if (roomDataListener) db.ref(`rooms/${code}`).off('value', roomDataListener);
             roomDataListener = null;
@@ -1534,8 +1800,9 @@
                     db.ref(`rooms/${code}`).remove();
                 } else {
                     const updates = { [`players/${myUid}`]: null };
+                    if (myScore > 0) updates[`scoreArchive/${myUid}`] = { nickname: myNickname, score: myScore };
                     if (!isSpectator && !isMaster) {
-                        updates[`left/${myUid}`] = { nickname: myNickname, guesses: submittedGuesses, solvedTimestamp: solvedTimestamp || 0 };
+                        updates[`left/${myUid}`] = { nickname: myNickname, guesses: submittedGuesses, solvedTimestamp: solvedTimestamp || 0, score: myScore };
                     }
                     if (isHost) {
                         const newHost = othersPlaying[0] || others[0];
@@ -1557,7 +1824,6 @@
                 }
             }
             leaveRoomLocal();
-            showToast("방에서 나왔어요.");
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -1643,6 +1909,7 @@
             chatRef.push({
                 uid: myUid,
                 nickname: myNickname,
+                av: myAvatar(),
                 text: text,
                 ts: serverNow()
             });
@@ -1668,15 +1935,20 @@
             const box = document.getElementById('chatMessages');
             const isMe = (msg.uid === myUid);
             const div = document.createElement('div');
-            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+            div.className = `chat-msg flex items-end gap-1.5 mt-2 ${isMe ? 'flex-row-reverse' : ''}`;
+            div.dataset.uid = msg.uid || '';
             div.innerHTML = `
-                <span class="text-[10px] text-slate-400 mb-0.5 px-1">${crown(msg.uid)}${escapeHtml(msg.nickname)}</span>
-                <div class="px-3 py-1.5 rounded-2xl max-w-[85%] break-words ${isMe ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm'}">
-                    ${escapeHtml(msg.text)}
+                <div class="pt-2">${avatarHtml(sanitizeAv(msg.av), 28)}</div>
+                <div class="flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}">
+                    <span class="text-[10px] text-slate-400 mb-0.5 px-1">${nameHtml(msg.uid, msg.nickname)}</span>
+                    <div class="chat-bubble px-3 py-1.5 rounded-2xl max-w-[100%] break-words ${isMe ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm'}">
+                        ${escapeHtml(msg.text)}
+                    </div>
                 </div>
             `;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
+            applyLeaderStyles();
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -1707,7 +1979,7 @@
             const tag = t && t.tagName;
             // 채팅창이나 닉네임 입력칸에 타이핑 중일 때는 게임 키보드가 작동하지 않도록 보호
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
-            if (['lobbyModal', 'hostModal', 'hintModal', 'gameOverModal'].some(id => !document.getElementById(id).classList.contains('hidden'))) return;
+            if (['lobbyModal', 'hostModal', 'hintModal', 'gameOverModal', 'shopModal'].some(id => !document.getElementById(id).classList.contains('hidden'))) return;
 
             if (e.key === 'Enter') {
                 if (tag === 'BUTTON') return;
@@ -1727,6 +1999,359 @@
                 seq.forEach(handleKey);
             }
         });
+
+
+        // ═══════════════════════════════════════════════════════════════
+        //  🐾 캐릭터 / 코인 / 상점  (코인·보유 아이템은 이 기기(localStorage)에 저장돼요)
+        // ═══════════════════════════════════════════════════════════════
+        const AVATAR_BASES = [
+            { id: '🐶', n: '강아지', p: 0 }, { id: '🐱', n: '고양이', p: 0 }, { id: '🐰', n: '토끼', p: 0 },
+            { id: '🐻', n: '곰', p: 0 }, { id: '🐼', n: '판다', p: 0 }, { id: '🦊', n: '여우', p: 0 },
+            { id: '🐧', n: '펭귄', p: 0 }, { id: '🐸', n: '개구리', p: 0 },
+            { id: '🐯', n: '호랑이', p: 200 }, { id: '🦁', n: '사자', p: 200 }, { id: '🐨', n: '코알라', p: 200 },
+            { id: '🦄', n: '유니콘', p: 500 }, { id: '🐲', n: '용', p: 700 }
+        ];
+        const SHOP_ITEMS = {
+            hat: [
+                { id: '🎀', n: '리본', p: 120 }, { id: '🧢', n: '야구모자', p: 150 }, { id: '👒', n: '밀짚모자', p: 200 },
+                { id: '🎩', n: '신사모자', p: 250 }, { id: '🎓', n: '학사모', p: 300 }, { id: '👑', n: '왕관', p: 600 }
+            ],
+            face: [{ id: '👓', n: '안경', p: 150 }, { id: '🕶️', n: '선글라스', p: 200 }, { id: '🥽', n: '고글', p: 250 }],
+            neck: [{ id: '🧣', n: '목도리', p: 180 }, { id: '👔', n: '넥타이', p: 200 }, { id: '📿', n: '목걸이', p: 250 }, { id: '🏅', n: '금메달', p: 350 }],
+            side: [
+                { id: '🎈', n: '풍선', p: 100 }, { id: '🍦', n: '아이스크림', p: 120 }, { id: '📚', n: '책', p: 150 },
+                { id: '🎸', n: '기타', p: 300 }, { id: '🔮', n: '수정구슬', p: 400 }, { id: '🏆', n: '트로피', p: 500 }
+            ],
+            bg: [
+                { id: 'mint', n: '민트', p: 100, css: 'linear-gradient(135deg,#d1fae5,#6ee7b7)' },
+                { id: 'sky', n: '하늘', p: 100, css: 'linear-gradient(135deg,#e0f2fe,#7dd3fc)' },
+                { id: 'sunset', n: '노을', p: 200, css: 'linear-gradient(135deg,#fde68a,#fb7185)' },
+                { id: 'night', n: '밤하늘', p: 300, css: 'linear-gradient(135deg,#312e81,#7c3aed)' },
+                { id: 'rainbow', n: '무지개', p: 500, css: 'linear-gradient(135deg,#fca5a5,#fde68a,#86efac,#93c5fd,#c4b5fd)' }
+            ]
+        };
+        const SHOP_TABS = [['a', '동물'], ['hat', '모자'], ['face', '얼굴'], ['neck', '목'], ['side', '손/옆'], ['bg', '배경']];
+        const catalog = cat => cat === 'a' ? AVATAR_BASES : (SHOP_ITEMS[cat] || []);
+        let shopTab = 'a';
+
+        const defaultProfile = () => ({
+            coins: 0,
+            owned: AVATAR_BASES.filter(b => b.p === 0).map(b => b.id),
+            eq: { a: '🐶', hat: '', face: '', neck: '', side: '', bg: '' }
+        });
+        function loadProfile() {
+            const d = defaultProfile();
+            try {
+                const raw = localStorage.getItem('wordle_profile');
+                if (raw) {
+                    const p = JSON.parse(raw);
+                    return {
+                        coins: Math.max(0, parseInt(p.coins, 10) || 0),
+                        owned: Array.from(new Set(d.owned.concat(Array.isArray(p.owned) ? p.owned : []))),
+                        eq: Object.assign(d.eq, p.eq || {})
+                    };
+                }
+            } catch (e) {}
+            return d;
+        }
+        let profile = loadProfile();
+        function saveProfile() { try { localStorage.setItem('wordle_profile', JSON.stringify(profile)); } catch (e) {} }
+
+        // 외부(DB)에서 온 아바타 데이터는 상점 목록에 있는 값만 통과시켜요 (XSS/이상값 방지)
+        function sanitizeAv(av) {
+            const out = { a: '🐶', hat: '', face: '', neck: '', side: '', bg: '' };
+            if (!av || typeof av !== 'object') return out;
+            SHOP_TABS.forEach(([cat]) => {
+                const v = av[cat];
+                if (typeof v === 'string' && catalog(cat).some(it => it.id === v)) out[cat] = v;
+            });
+            return out;
+        }
+        function myAvatar() { return sanitizeAv(profile.eq); }
+
+        function avatarHtml(av, size) {
+            av = av || sanitizeAv(null);
+            size = size || 40;
+            const bgItem = SHOP_ITEMS.bg.find(b => b.id === av.bg);
+            const bg = bgItem ? bgItem.css : '#f1f5f9';
+            return `<span class="av" style="width:${size}px;height:${size}px;background:${bg};font-size:${Math.round(size * 0.64)}px">` +
+                `<span class="av-base">${av.a}</span>` +
+                (av.hat ? `<span class="av-hat" style="font-size:${Math.round(size * 0.46)}px;top:${-Math.round(size * 0.24)}px">${av.hat}</span>` : '') +
+                (av.face ? `<span class="av-face" style="font-size:${Math.round(size * 0.4)}px;top:${Math.round(size * 0.3)}px">${av.face}</span>` : '') +
+                (av.neck ? `<span class="av-neck" style="font-size:${Math.round(size * 0.36)}px;bottom:${-Math.round(size * 0.12)}px">${av.neck}</span>` : '') +
+                (av.side ? `<span class="av-side" style="font-size:${Math.round(size * 0.42)}px;right:${-Math.round(size * 0.3)}px;bottom:${-Math.round(size * 0.04)}px">${av.side}</span>` : '') +
+                `</span>`;
+        }
+
+        function renderProfileBtn() {
+            document.getElementById('profileBtn').innerHTML = `<span class="mt-0.5">${avatarHtml(myAvatar(), 24)}</span><span>🪙 ${profile.coins}</span>`;
+        }
+
+        function awardCoinsOnce(key, amount) {
+            let stored = null;
+            try { stored = localStorage.getItem('wordle_last_coin'); } catch (e) {}
+            if (lastCoinKey === key || stored === key) return false;
+            lastCoinKey = key;
+            try { localStorage.setItem('wordle_last_coin', key); } catch (e) {}
+            profile.coins += amount;
+            saveProfile();
+            renderProfileBtn();
+            return true;
+        }
+
+        function pushMyAvatar() {
+            if (!db || !currentRoomCode || !lastRoomData || !lastRoomData.players || !lastRoomData.players[myUid]) return;
+            db.ref(`rooms/${currentRoomCode}/players/${myUid}/avatar`).set(myAvatar());
+        }
+
+        function openShop() { renderShop(); document.getElementById('shopModal').classList.remove('hidden'); }
+        function closeShop() { document.getElementById('shopModal').classList.add('hidden'); }
+        function setShopTab(cat) { shopTab = cat; renderShop(); }
+
+        function renderShop() {
+            document.getElementById('shopPreview').innerHTML = avatarHtml(myAvatar(), 76);
+            document.getElementById('shopCoins').textContent = `🪙 ${profile.coins}`;
+            document.getElementById('shopTabs').innerHTML = SHOP_TABS.map(([cat, label]) =>
+                `<button onclick="setShopTab('${cat}')" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition ${shopTab === cat ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`
+            ).join('');
+            document.getElementById('shopGrid').innerHTML = catalog(shopTab).map(it => {
+                const owned = it.p === 0 || profile.owned.includes(it.id);
+                const equipped = profile.eq[shopTab] === it.id;
+                const preview = shopTab === 'bg'
+                    ? `<div class="mx-auto w-10 h-10 rounded-full border border-slate-200" style="background:${it.css}"></div>`
+                    : `<div class="text-3xl leading-none h-10 flex items-center justify-center">${it.id}</div>`;
+                const label = equipped ? '착용중 ✓' : (owned ? '착용하기' : `🪙 ${it.p}`);
+                const labelCls = equipped ? 'text-emerald-700' : (owned ? 'text-slate-600' : (profile.coins >= it.p ? 'text-amber-600' : 'text-slate-400'));
+                return `<div class="shop-item ${equipped ? 'equipped' : ''}" onclick="shopItemClick('${shopTab}','${it.id}')">
+                    ${preview}<p class="text-[11px] font-bold text-slate-700 mt-1">${it.n}</p><p class="text-[11px] font-bold ${labelCls}">${label}</p></div>`;
+            }).join('');
+        }
+
+        function shopItemClick(cat, id) {
+            const it = catalog(cat).find(x => x.id === id);
+            if (!it) return;
+            const owned = it.p === 0 || profile.owned.includes(id);
+            if (!owned) {
+                if (profile.coins < it.p) { showToast(`코인이 부족해요! (필요 ${it.p} / 보유 ${profile.coins})`); return; }
+                if (!confirm(`'${it.n}' 을(를) 🪙${it.p} 코인에 구매할까요?`)) return;
+                profile.coins -= it.p;
+                profile.owned.push(id);
+                profile.eq[cat] = id;
+            } else if (profile.eq[cat] === id && cat !== 'a') {
+                profile.eq[cat] = '';
+            } else {
+                profile.eq[cat] = id;
+            }
+            saveProfile();
+            renderShop();
+            renderProfileBtn();
+            pushMyAvatar();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  🏆 토탈 점수제 / 실시간 순위
+        //   - 정답 기본점: 1번째 100 · 2번째 80 · 3번째 60 · 4번째 40 · 5번째 20
+        //   - 스피드 보너스: 가장 빨리 맞힌 순서대로 +30 / +20 / +10
+        //   - 타임어택 보너스: 남은 시간 비율 × 20점
+        //   - 힌트 페널티: 공개된 힌트 1개당 -10점 (정답자 최소 10점)
+        //   - 출제자: 문제를 못 푼 참가자 1명당 +15점 (최대 +60)
+        // ═══════════════════════════════════════════════════════════════
+        const toArr = v => Array.isArray(v) ? v : Object.values(v || {});
+
+        function nameHtml(uid, nick) {
+            return `${crown(uid)}<span class="pname" data-nameuid="${escapeHtml(uid)}">${escapeHtml(nick)}</span>`;
+        }
+
+        function calcRoundScores(data) {
+            const out = {};
+            if (!data || !data.secretWord || !data.players) return out;
+            const secret = data.secretWord;
+            const hintCnt = Object.keys((data.hintState || {}).revealed || {}).length;
+            const limitMs = (data.timeLimit || 0) * 1000;
+            const start = data.startedAt || 0;
+            const parts = Object.entries(data.players).filter(([u, p]) => u !== data.masterUid && !p.spectator);
+
+            const solvers = parts
+                .map(([u, p]) => ({ u, p, g: toArr(p.guesses) }))
+                .filter(x => x.g.includes(secret))
+                .sort((a, b) => (a.p.solvedTimestamp || 9e15) - (b.p.solvedTimestamp || 9e15));
+
+            solvers.forEach((x, i) => {
+                const k = x.g.indexOf(secret) + 1;
+                const base = Math.max(10, (maxGuesses + 1 - k) * 20);
+                const speed = [30, 20, 10][i] || 0;
+                let time = 0;
+                if (limitMs > 0 && start && x.p.solvedTimestamp) {
+                    time = Math.round(20 * Math.max(0, Math.min(1, (start + limitMs - x.p.solvedTimestamp) / limitMs)));
+                }
+                const hint = Math.min(hintCnt * 10, Math.max(0, base - 10));
+                out[x.u] = { total: Math.max(10, base + speed + time - hint), base, speed, time, hint, role: 'solver' };
+            });
+
+            const failed = parts.filter(([u, p]) => p.completed && !toArr(p.guesses).includes(secret)).length;
+            const bonus = Math.min(failed * 15, 60);
+            if (bonus > 0 && data.masterUid && data.players[data.masterUid]) {
+                out[data.masterUid] = { total: bonus, master: bonus, role: 'master' };
+            }
+            return out;
+        }
+
+        function getStandings(data) {
+            const rs = calcRoundScores(data);
+            return Object.entries(data.players || {})
+                .filter(([u, p]) => !p.spectator || p.waiting || (p.score || 0) > 0)
+                .map(([u, p]) => {
+                    const live = (rs[u] && rs[u].total) || 0;
+                    return { uid: u, nickname: p.nickname || '?', avatar: p.avatar, score: p.score || 0, live, total: (p.score || 0) + live, isMaster: u === data.masterUid };
+                })
+                .sort((a, b) => b.total - a.total || b.score - a.score || a.nickname.localeCompare(b.nickname));
+        }
+
+        function withRanks(list) {
+            let prevTotal = null, prevRank = 0;
+            return list.map((x, i) => {
+                const rank = (prevTotal !== null && x.total === prevTotal) ? prevRank : i + 1;
+                prevTotal = x.total; prevRank = rank;
+                return Object.assign({}, x, { rank });
+            });
+        }
+        const rankMedal = r => r === 1 ? '🥇' : (r === 2 ? '🥈' : (r === 3 ? '🥉' : r));
+
+        function toggleRankExpand() {
+            rankExpanded = !rankExpanded;
+            if (lastRoomData) updateScoreboard(lastRoomData);
+        }
+
+        function updateScoreboard(data) {
+            const panel = document.getElementById('rankPanel');
+            if (!data || !data.players) { panel.classList.add('hidden'); return; }
+            const st = withRanks(getStandings(data));
+            if (st.length === 0) { panel.classList.add('hidden'); return; }
+            panel.classList.remove('hidden');
+
+            // 1등(공동 포함) 갱신 + 순위 변동 알림
+            const top = st[0].total;
+            const newLeaders = new Set(top > 0 ? st.filter(x => x.total === top).map(x => x.uid) : []);
+            const changed = [...newLeaders].sort().join(',') !== [...leaderUids].sort().join(',');
+            const me = st.find(x => x.uid === myUid);
+            let toastDone = false;
+            if (leaderInit && changed && newLeaders.size === 1) {
+                const u = [...newLeaders][0];
+                const who = st.find(x => x.uid === u);
+                showToast(u === myUid ? '🥇 내가 1등이에요! 채팅창에서 반짝반짝 빛나요 ✨' : `🥇 ${who.nickname}님이 1등으로 올라섰어요!`, 2800);
+                toastDone = true;
+            }
+            if (leaderInit && !toastDone && me && myPrevRank !== null && me.rank < myPrevRank && top > 0) {
+                showToast(`🔥 ${me.rank}위로 상승했어요!`);
+            }
+            myPrevRank = me ? me.rank : null;
+            leaderUids = newLeaders;
+            leaderInit = true;
+
+            const view = rankExpanded ? st : st.filter((x, i) => i < 3 || x.uid === myUid);
+            document.getElementById('rankList').innerHTML = view.map(x => `
+                <div class="flex items-center gap-2 px-2 py-1 rounded-lg border text-xs ${x.uid === myUid ? 'bg-emerald-100 border-emerald-300' : 'bg-white border-emerald-100'}">
+                    <span class="w-6 text-center font-black">${x.total > 0 ? rankMedal(x.rank) : x.rank}</span>
+                    <span class="mt-1">${avatarHtml(sanitizeAv(x.avatar), 22)}</span>
+                    <span class="flex-1 truncate font-bold text-slate-700">${nameHtml(x.uid, x.nickname)}${x.isMaster ? ' <span class="text-[10px] text-emerald-600 font-semibold">출제</span>' : ''}</span>
+                    ${x.live > 0 ? `<span class="text-[10px] text-emerald-600 font-bold">+${x.live}</span>` : ''}
+                    <span class="font-black tabular-nums text-slate-800">${x.total}</span>
+                </div>`).join('');
+
+            const tgl = document.getElementById('rankToggleBtn');
+            tgl.classList.toggle('hidden', st.length <= 3);
+            tgl.textContent = rankExpanded ? '접기 ▲' : `전체 보기 (${st.length}명) ▼`;
+            applyLeaderStyles();
+        }
+
+        function applyLeaderStyles() {
+            document.querySelectorAll('[data-nameuid]').forEach(el => el.classList.toggle('leader-name', leaderUids.has(el.dataset.nameuid)));
+            document.querySelectorAll('.chat-msg').forEach(el => el.classList.toggle('leader-msg', leaderUids.has(el.dataset.uid)));
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  ⏱ 타임어택
+        // ═══════════════════════════════════════════════════════════════
+        function startTimerLoop() {
+            stopTimerLoop();
+            timerInterval = setInterval(updateTimerUI, 1000);
+            updateTimerUI();
+        }
+        function stopTimerLoop() {
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        }
+        function fmtTime(ms) {
+            const s = Math.max(0, Math.ceil(ms / 1000));
+            return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+        }
+
+        function updateTimerUI() {
+            const row = document.getElementById('timerRow');
+            const d = lastRoomData;
+            if (!currentRoomCode || !d || !d.secretWord) { row.classList.add('hidden'); return; }
+            row.classList.remove('hidden');
+            const txt = document.getElementById('timerText');
+            const bar = document.getElementById('timerBar');
+
+            if (!d.timeLimit) {
+                txt.textContent = '⏱ 제한 시간 없음 (무제한)';
+                txt.className = 'text-sm font-black text-slate-600';
+                bar.style.width = '100%';
+                bar.className = 'h-full bg-slate-300';
+                return;
+            }
+            const total = d.timeLimit * 1000;
+            const remain = (d.startedAt || serverNow()) + total - serverNow();
+            const urgent = remain <= 30000;
+            bar.style.width = Math.max(0, Math.min(100, remain / total * 100)) + '%';
+            bar.className = 'h-full ' + (urgent ? 'bg-rose-500' : 'bg-emerald-500');
+            if (remain <= 0) {
+                txt.textContent = '⏰ 시간 종료!';
+                txt.className = 'text-sm font-black text-rose-600';
+                handleTimeUp(d);
+            } else {
+                txt.textContent = `⏱ 남은 시간 ${fmtTime(remain)}`;
+                txt.className = 'text-sm font-black ' + (urgent ? 'text-rose-600 animate-pulse' : 'text-emerald-700');
+            }
+        }
+
+        function handleTimeUp(d) {
+            if (!isMaster && !isSpectator && !isGameOver) {
+                timedOut = true;
+                isGameOver = true;
+                currentGuess = '';
+                renderBoard();
+                syncMyProgress();
+                updateHintButton();
+                refreshRoomView();
+                showToast('⏰ 시간 종료! 정답을 확인해 보세요.', 3000);
+            }
+            const key = `${currentRoomCode}:${d.round || 1}:${d.secretWord}:${d.startedAt}`;
+            if ((isMaster || isHost) && timeUpKey !== key) {
+                timeUpKey = key;
+                const word = d.secretWord;
+                // 연결이 끊긴 참가자까지 포함해서 라운드가 끝나도록 출제자/방장이 강제 완료 처리
+                setTimeout(() => forceCompleteAll(word), 2500);
+            }
+        }
+
+        function forceCompleteAll(word) {
+            if (!db || !currentRoomCode) return;
+            db.ref(`rooms/${currentRoomCode}`).once('value', snap => {
+                const d = snap.val();
+                if (!d || d.secretWord !== word || !d.players) return;
+                const ups = {};
+                Object.entries(d.players).forEach(([u, p]) => {
+                    if (u !== d.masterUid && !p.spectator && !p.completed) {
+                        ups[`players/${u}/completed`] = true;
+                        ups[`players/${u}/timedOut`] = true;
+                    }
+                });
+                if (Object.keys(ups).length) db.ref(`rooms/${currentRoomCode}`).update(ups);
+            });
+        }
+
+        renderProfileBtn();
 
         // 초기화
         initBoard();
