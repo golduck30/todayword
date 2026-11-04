@@ -432,10 +432,17 @@
         }
 
         function assembleCandidates(jamoStr) {
-            const set = new Set();
+           const set = new Set();
+            // 1) 기본 순서대로 조합
             jamoVariants(jamoStr).forEach(v => {
                 set.add(Hangul.assemble(normalizeJamo(v).split('')));
             });
+            // 2) [8글자 쌍자음 완벽 지원] '줄넘기(ㅈㅜㄹㄴㅓㅁㄱㅣ)'처럼 모음 뒤 ㄱㄱ이 들어갈 때 초성 쌍자음(ㄲ)으로 조합된 결과도 후보에 강제 추가!
+            const norm = normalizeJamo(jamoStr);
+            if (/[ㅏ-ㅣ]ㄱㄱ/.test(norm)) {
+                const altJamo = norm.replace(/([ㅏ-ㅣ])ㄱㄱ/g, '$1ㄲ');
+                set.add(Hangul.assemble(altJamo.split('')));
+            }
             return [...set];
         }
 
