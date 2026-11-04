@@ -81,22 +81,6 @@
 </head>
 <body class="flex flex-col min-h-screen text-slate-800">
 
-    <!-- 💾 원클릭 HTML 파일 생성/다운로드 배너 (사전이 합쳐진 뒤에는 자동으로 숨겨집니다) -->
-    <div id="builderBanner" class="bg-amber-100 border-b border-amber-300 px-4 py-2.5 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2">
-        <div class="font-bold">
-            💡 [원클릭 파일 완성기] 기존 파일(1104_긴급패치.TXT 등)을 선택하면 사전 데이터가 합쳐진 완성본 <code>.html</code> 파일이 즉시 다운로드됩니다!
-        </div>
-        <div class="flex items-center gap-2">
-            <label class="cursor-pointer px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition">
-                📂 기존 파일 선택해서 완성본 HTML 다운로드
-                <input type="file" accept=".html,.txt" class="hidden" onchange="buildFullHtmlFile(event)">
-            </label>
-            <button onclick="downloadCurrentHtml()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm transition">
-                💾 현재 상태 그대로 HTML 다운로드
-            </button>
-        </div>
-    </div>
-
     <!-- 상단 헤더 -->
     <header class="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
         <div class="flex items-center space-x-2">
