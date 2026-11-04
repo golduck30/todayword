@@ -48,7 +48,6 @@
 
         /* 글자 수별 타일 크기 (8칸까지 모바일에서도 들어가도록) */
         .board-7 .tile { font-size: 1.15rem; }
-        .board-8 .tile { font-size: 1.02rem; border-radius: 0.4rem; border-width: 1.5px; }
 
         /* 🥇 실시간 1등 닉네임 */
         @keyframes leaderShine { to { background-position: 300% center; } }
@@ -77,6 +76,8 @@
         .shop-item { border: 2px solid #e2e8f0; border-radius: 0.75rem; padding: 0.5rem 0.25rem; text-align: center; background: #fff; cursor: pointer; transition: all .1s; }
         .shop-item:active { transform: scale(0.96); }
         .shop-item.equipped { border-color: #10b981; background: #ecfdf5; }
+        @keyframes avBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        .av-bounce { animation: avBounce 1.4s ease-in-out infinite; }
         @keyframes popIn { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
@@ -95,7 +96,6 @@
                 <button onclick="setWordLength(5)" id="lenBtn-5" class="length-btn px-2 py-1 rounded-md transition active">5자</button>
                 <button onclick="setWordLength(6)" id="lenBtn-6" class="length-btn px-2 py-1 rounded-md transition">6자</button>
                 <button onclick="setWordLength(7)" id="lenBtn-7" class="length-btn px-2 py-1 rounded-md transition">7자</button>
-                <button onclick="setWordLength(8)" id="lenBtn-8" class="length-btn px-2 py-1 rounded-md transition">8자</button>
             </div>
             <button id="profileBtn" onclick="openShop()" class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold text-amber-700 transition"></button>
             <button onclick="openLobbyModal()" class="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">
@@ -116,8 +116,8 @@
             </div>
             <div id="masterNotice" class="text-xs text-amber-700 mt-1 font-medium hidden">🎯 첫 번째 줄 타일에 자모를 입력하고 [문제 출제] 버튼을 누르세요!</div>
             <div id="timeSelectorRow" class="hidden mt-2">
-                <p class="text-[11px] font-bold text-amber-700 mb-1">⏱ 제한 시간 <span class="font-medium text-slate-500">(문제를 출제하는 순간부터 시작돼요)</span></p>
-                <div id="timeSelector" class="grid grid-cols-4 gap-1.5"></div>
+                <p class="text-[11px] font-bold text-amber-700 mb-1">⏱ 진행 방식 <span class="font-medium text-slate-500">(타임어택은 출제하는 순간부터 시작돼요)</span></p>
+                <div id="timeSelector" class="grid grid-cols-2 gap-1.5"></div>
             </div>
             <div id="timerRow" class="hidden mt-2">
                 <div class="text-sm font-black" id="timerText"></div>
@@ -126,10 +126,10 @@
             <div id="dispHostRow" class="hidden text-sm mt-1">방장: <span id="dispHost" class="font-bold text-amber-600"></span></div>
             <div id="roomActions" class="hidden mt-2">
                 <div class="flex flex-wrap gap-2">
-                    <span id="invalidBadge" class="hidden self-center text-xs font-bold text-rose-600"></span>
                     <button id="hostBtn" onclick="openHostModal()" class="hidden px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition">👑 방 관리</button>
                     <button id="hintReqBtn" onclick="requestHint()" class="hidden px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition">💡 힌트 요청</button>
                     <button id="leaveBtn" onclick="leaveRoom()" class="px-3 py-1.5 bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition">🚪 나가기</button>
+                    <button id="spectateBtn" onclick="toggleSpectate()" class="hidden px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg transition">👀 관전 전환</button>
                 </div>
             </div>
             <div id="hintBanner" onclick="reopenHintModal()" class="hidden mt-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1.5 cursor-pointer"></div>
@@ -137,6 +137,7 @@
             <div id="rankPanel" class="hidden mt-3 pt-2 border-t border-emerald-200">
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-xs font-black text-emerald-800">🏆 실시간 순위 <span class="font-medium text-slate-400">(누적 점수)</span></span>
+                    <button onclick="openScoreHelp()" class="ml-auto mr-2 text-[11px] font-bold text-slate-500 underline">ℹ️ 점수 규칙</button>
                     <button id="rankToggleBtn" onclick="toggleRankExpand()" class="hidden text-[11px] font-bold text-emerald-700"></button>
                 </div>
                 <div id="rankList" class="space-y-1"></div>
@@ -148,6 +149,7 @@
 
         <!-- 실시간 관전 대시보드 -->
         <div id="spectatorDashboard" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 hidden max-h-48 overflow-y-auto">
+            <div id="forceBar" class="hidden mb-2"></div>
             <div id="answerReveal" class="hidden mb-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-center">
                 <p class="text-[11px] text-amber-700 font-bold mb-1">🔓 정답 공개 <span class="font-medium">(풀이를 마친 사람만 볼 수 있어요 · 다른 사람에겐 비밀! 🤫)</span></p>
                 <div id="answerTiles" class="flex justify-center gap-1"></div>
@@ -278,6 +280,69 @@
         </div>
     </div>
 
+    <!-- 점수 규칙 모달 -->
+    <div id="scoreHelpModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl max-h-[88vh] overflow-y-auto text-left">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-black text-slate-800">📖 점수는 이렇게 계산돼요</h3>
+                <button onclick="closeScoreHelp()" class="text-slate-400 hover:text-slate-600 text-sm font-semibold">닫기</button>
+            </div>
+            <div class="space-y-3 text-sm text-slate-700">
+                <section>
+                    <p class="font-black text-emerald-700 mb-1">✅ 정답을 맞힌 참가자</p>
+                    <ul class="space-y-1.5 text-[13px]">
+                        <li>🎯 <b>기본 점수</b> — 몇 번째 시도에 맞혔는지에 따라<br><span class="text-slate-500">1번째 100 · 2번째 80 · 3번째 60 · 4번째 40 · 5번째 20점</span></li>
+                        <li>⚡ <b>스피드 보너스</b> — 가장 빨리 맞힌 순서대로<br><span class="text-slate-500">1등 +30 · 2등 +20 · 3등 +10점</span></li>
+                        <li>⏱ <b>타임어택 보너스</b> — 타임어택일 때 남은 시간이 많을수록 최대 +20점<br><span class="text-slate-500">(5글자 4분 · 6글자 6분 · 7글자 8분)</span></li>
+                        <li>💡 <b>힌트 사용</b> — 이번 라운드에 공개된 힌트 1개당 −10점<br><span class="text-slate-500">(정답을 맞히면 최소 10점은 받아요)</span></li>
+                    </ul>
+                </section>
+                <section>
+                    <p class="font-black text-rose-600 mb-1">❌ 못 맞힌 참가자</p>
+                    <p class="text-[13px]">5번 안에 못 맞히거나 시간이 끝나면 그 라운드 점수는 0점이에요.</p>
+                </section>
+                <section>
+                    <p class="font-black text-amber-600 mb-1">🎯 출제자</p>
+                    <p class="text-[13px]">못 맞힌 참가자 1명당 +15점 (최대 +60점). 너무 쉽지도, 불가능하지도 않은 문제가 유리해요!</p>
+                </section>
+                <section>
+                    <p class="font-black text-indigo-600 mb-1">🏆 누적 순위 &amp; 코인</p>
+                    <p class="text-[13px]">라운드 점수는 방 안에서 계속 쌓여 실시간 순위가 돼요. 1등은 채팅창에서 반짝반짝 빛나요 ✨<br>라운드가 끝나면 이번 라운드 점수만큼 🪙 코인이 지급되고, 같은 닉네임(아이디)이면 방을 새로 만들어도 코인이 유지돼요.</p>
+                </section>
+                <section class="bg-slate-50 rounded-lg p-3 text-[13px]">
+                    <p class="font-black mb-1">📌 계산 예시</p>
+                    <p>3번째 시도에 정답(60) + 가장 빨리 맞힘(+30) + 남은 시간 보너스(+15) − 힌트 1개(−10) = <b class="text-emerald-700">95점</b></p>
+                </section>
+                <p class="text-[11px] text-slate-400">👀 관전자는 점수가 없어요. 도중에 관전으로 바꾸면 그 라운드 점수는 받을 수 없어요.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 코인 도박장 모달 -->
+    <div id="casinoModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gradient-to-b from-slate-900 to-indigo-950 text-white rounded-2xl max-w-sm w-full p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-lg font-black">🎰 코인 도박장</h3>
+                <button onclick="closeCasino()" class="text-slate-300 hover:text-white text-sm font-semibold">닫기</button>
+            </div>
+            <p class="text-[11px] text-indigo-200 mb-3">게임 속 코인으로만 즐기는 미니게임이에요. 재미로만 즐기고, 잃어도 라운드에서 다시 벌 수 있어요 🙂</p>
+            <div class="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2 mb-3">
+                <span class="text-xs text-indigo-200">내 코인</span>
+                <span id="casinoCoins" class="text-xl font-black text-amber-300"></span>
+            </div>
+            <div id="casinoTabs" class="grid grid-cols-3 gap-1.5 mb-3"></div>
+            <div class="mb-3">
+                <p class="text-xs text-indigo-200 mb-1">배팅 금액</p>
+                <div id="casinoBetChips" class="grid grid-cols-5 gap-1.5 mb-2"></div>
+                <input id="casinoBetInput" type="number" min="10" step="10" oninput="casinoBetFromInput()" class="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm font-bold">
+            </div>
+            <div id="casinoStage" class="bg-black/30 rounded-xl p-4 text-center min-h-[130px] flex flex-col items-center justify-center gap-3"></div>
+            <div id="casinoResult" class="text-center text-sm font-black min-h-[24px] mt-3"></div>
+            <div id="casinoPayout" class="text-[11px] text-indigo-300 mt-2 leading-relaxed"></div>
+            <div id="casinoLog" class="text-[11px] text-indigo-200/80 mt-3 space-y-0.5"></div>
+        </div>
+    </div>
+
     <!-- 캐릭터 상점 모달 -->
     <div id="shopModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl max-h-[88vh] flex flex-col">
@@ -286,11 +351,13 @@
                 <button onclick="closeShop()" class="text-slate-400 hover:text-slate-600 text-sm font-semibold">닫기</button>
             </div>
             <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-xl mb-3">
-                <div id="shopPreview" class="shrink-0 pt-4 pl-1 pr-5"></div>
+                <div id="shopPreview" class="shrink-0 pt-6 pl-2 pr-8 pb-2"></div>
                 <div class="flex-1">
                     <p class="text-xs text-slate-500">내 코인</p>
                     <p id="shopCoins" class="text-2xl font-black text-amber-600"></p>
                     <p class="text-[11px] text-slate-400 mt-1">라운드에서 얻은 점수가 그대로 코인이 돼요!</p>
+                    <p id="shopOwner" class="text-[11px] text-emerald-600 mt-0.5 break-all"></p>
+                    <button onclick="openCasino()" class="mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-amber-300 text-xs font-black rounded-lg transition">🎰 코인 도박장</button>
                 </div>
             </div>
             <div id="shopTabs" class="flex gap-1 mb-2 overflow-x-auto"></div>
@@ -362,12 +429,10 @@
         let hintBannerTimer = null;
 
         // 타임어택 / 점수 / 경고 상태
-        const WORD_LENGTHS = [5, 6, 7, 8];
-        const TIME_LIMIT_OPTIONS = [{ sec: 120, label: '2분' }, { sec: 240, label: '4분' }, { sec: 360, label: '6분' }, { sec: 0, label: '무제한' }];
-        const INVALID_KICK_LIMIT = 5;      // 잘못된 제출(사전에 없는 단어/미완성 글자) 누적 횟수 → 자동 퇴장
-        const KICK_COOLDOWN_SEC = 30;      // 자동 퇴장 후 재입장 대기 시간
-        let selectedTimeLimit = 0;
-        let invalidCount = 0;
+        const WORD_LENGTHS = [5, 6, 7];
+        // 타임어택 제한 시간(초): 5글자 4분 · 6글자 6분 · 7글자 8분
+        const TIME_ATTACK_SEC = { 5: 240, 6: 360, 7: 480 };
+        let selectedTimeMode = 'attack';   // 'attack' = 타임어택, 'free' = 무제한
         let timedOut = false;
         let timerInterval = null;
         let timeUpKey = null;
@@ -683,14 +748,14 @@
                 db.ref(`rooms/${currentRoomCode}`).update({
                     secretWord: makerWord,
                     targetLength: wordLength,
-                    timeLimit: selectedTimeLimit,
+                    timeLimit: selectedTimeMode === 'attack' ? (TIME_ATTACK_SEC[wordLength] || 0) : 0,
                     startedAt: firebase.database.ServerValue.TIMESTAMP,
                     hintState: null,
                     left: null
                 });
                 hasMasterSetWord = true;
-                const tl = TIME_LIMIT_OPTIONS.find(o => o.sec === selectedTimeLimit);
-                showToast(`🎯 문제가 출제되었습니다! (${assemblePreview(makerWord)}) · ⏱ ${tl ? tl.label : '무제한'}`);
+                const tlSec = selectedTimeMode === 'attack' ? (TIME_ATTACK_SEC[wordLength] || 0) : 0;
+                showToast(`🎯 문제가 출제되었습니다! (${assemblePreview(makerWord)}) · ${tlSec ? '⏱ ' + (tlSec / 60) + '분 타임어택' : '♾️ 무제한'}`);
                 toggleMasterUI();
                 renderBoard();
                 return;
@@ -710,12 +775,12 @@
             }
 
             if (!isValidJamoSequence(currentGuess)) {
-                registerInvalid(`완성되지 않은 글자가 있어요! (${assemblePreview(currentGuess)})`);
+                showToast(`완성되지 않은 글자가 있어요! (${assemblePreview(currentGuess)})`);
                 return;
             }
 
             if (currentGuess !== secretWord && !isDictionaryWord(currentGuess)) {
-                registerInvalid(`사전에 없는 단어예요! (${assemblePreview(currentGuess)})`);
+                showToast(`사전에 없는 단어예요! (${assemblePreview(currentGuess)})`);
                 return;
             }
 
@@ -739,36 +804,6 @@
             }
         }
 
-        // 막 입력(사전에 없는 단어 / 미완성 글자) 누적 경고 → 5회면 자동 퇴장
-        function registerInvalid(msg) {
-            invalidCount++;
-            updateInvalidBadge();
-            if (invalidCount >= INVALID_KICK_LIMIT) { autoKickSelf(); return; }
-            if (invalidCount >= 3) {
-                showToast(`${msg} · ⚠️ 잘못된 제출 ${invalidCount}/${INVALID_KICK_LIMIT}회! ${INVALID_KICK_LIMIT}회가 되면 방에서 나가게 돼요`, 3200);
-            } else {
-                showToast(`${msg} (잘못된 제출 ${invalidCount}/${INVALID_KICK_LIMIT})`, 2600);
-            }
-        }
-
-        function updateInvalidBadge() {
-            const el = document.getElementById('invalidBadge');
-            if (currentRoomCode && invalidCount > 0 && !isMaster && !isSpectator) {
-                el.textContent = `⚠️ 잘못된 제출 ${invalidCount}/${INVALID_KICK_LIMIT}`;
-                el.classList.remove('hidden');
-            } else {
-                el.classList.add('hidden');
-            }
-        }
-
-        function autoKickSelf() {
-            if (!currentRoomCode || isMaster || isSpectator) return;
-            const code = currentRoomCode;
-            try { localStorage.setItem('wordle_kick_' + code, String(Date.now() + KICK_COOLDOWN_SEC * 1000)); } catch (e) {}
-            performLeave();
-            alert(`잘못된 제출(사전에 없는 단어·미완성 글자)이 ${INVALID_KICK_LIMIT}회 쌓여서 방에서 나가게 됐어요. 😅\n${KICK_COOLDOWN_SEC}초 뒤에 방 코드로 다시 들어올 수 있고, 점수는 이어져요.`);
-        }
-
         function showToast(msg, ms) {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
@@ -788,6 +823,20 @@
         }
 
         function createRoom() {
+            const nick = document.getElementById('nicknameInput').value.trim();
+            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
+            switchProfile(nick).then(createRoomNow);   // 같은 닉네임이면 코인/아이템 불러오기
+        }
+
+        function joinRoom(asSpectator = false) {
+            const nick = document.getElementById('nicknameInput').value.trim();
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            if (!nick) { alert("닉네임을 입력해주세요!"); return; }
+            if (roomCode.length !== 6) { alert("올바른 6자리 방 코드를 입력해주세요!"); return; }
+            switchProfile(nick).then(() => joinRoomNow(asSpectator));
+        }
+
+        function createRoomNow() {
             const nick = document.getElementById('nicknameInput').value.trim();
             if (!nick) { alert("닉네임을 입력해주세요!"); return; }
             if (!db) { alert("서버(Firebase)에 연결할 수 없습니다. 인터넷 연결을 확인해주세요."); return; }
@@ -816,7 +865,7 @@
             });
         }
 
-        function joinRoom(asSpectator = false) {
+        function joinRoomNow(asSpectator = false) {
             const nick = document.getElementById('nicknameInput').value.trim();
             const roomCode = document.getElementById('roomCodeInput').value.trim();
             if (!nick) { alert("닉네임을 입력해주세요!"); return; }
@@ -825,10 +874,6 @@
             db.ref(`rooms/${roomCode}`).once('value', snapshot => {
                 const room = snapshot.val();
                 if (!room) { alert("존재하지 않는 방입니다."); return; }
-                try {
-                    const until = parseInt(localStorage.getItem('wordle_kick_' + roomCode) || '0', 10);
-                    if (until > Date.now()) { alert(`잠시 쉬었다 오세요! ${Math.ceil((until - Date.now()) / 1000)}초 후에 다시 입장할 수 있어요.`); return; }
-                } catch (e) {}
 
                 const players = room.players || {};
                 const left = room.left || {};
@@ -954,7 +999,8 @@
                 if (meRec && !!meRec.spectator !== isSpectator) {
                     const wasSpectator = isSpectator;
                     isSpectator = !!meRec.spectator;
-                    if (wasSpectator && !isSpectator) showToast("🎮 이번 라운드부터 문제를 풀 수 있어요!");
+                    if (wasSpectator && !isSpectator) showToast(data.secretWord ? "🎮 이번 라운드부터 문제를 풀 수 있어요!" : "🎮 문제 풀기 모드예요! 출제를 기다려 주세요.");
+                    else if (!wasSpectator && isSpectator) showToast("👀 관전 모드로 전환됐어요.");
                 }
 
                 if (data.targetLength && data.targetLength !== wordLength) {
@@ -985,6 +1031,7 @@
                 updateRoomChrome(data);
                 updateScoreboard(data);
                 updateTimerUI();
+                updateSpectateBtn();
 
                 if (data.players) {
                     updateSpectatorBoard(data.players, data.masterUid);
@@ -1036,7 +1083,6 @@
             const showTimeSel = !!currentRoomCode && isMaster && !hasMasterSetWord && !isSpectator;
             timeRow.classList.toggle('hidden', !showTimeSel);
             if (showTimeSel) renderTimeSelector();
-            updateInvalidBadge();
 
             if (isSpectator) {
                 const meRec = lastRoomData && lastRoomData.players && lastRoomData.players[myUid];
@@ -1062,7 +1108,7 @@
                 } else if (pCount === 0) {
                     noticeEl.textContent = "⏳ 참가자가 방에 입장하면 문제를 출제할 수 있어요! (방 코드를 공유하세요)";
                 } else {
-                    noticeEl.textContent = `🎯 첫 번째 줄 타일에 ${wordLength}자모를 입력하고, 제한 시간을 고른 뒤 [문제 출제]를 누르세요!`;
+                    noticeEl.textContent = `🎯 첫 번째 줄 타일에 ${wordLength}자모를 입력하고, 진행 방식(타임어택/무제한)을 고른 뒤 [문제 출제]를 누르세요!`;
                 }
             } else {
                 if (finished) {
@@ -1082,14 +1128,16 @@
         }
 
         function renderTimeSelector() {
-            document.getElementById('timeSelector').innerHTML = TIME_LIMIT_OPTIONS.map(o =>
-                `<button onclick="setTimeLimit(${o.sec})" class="py-1.5 rounded-lg border text-xs font-bold transition ${selectedTimeLimit === o.sec ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}">${o.label}</button>`
+            const min = (TIME_ATTACK_SEC[wordLength] || 0) / 60;
+            const opts = [['attack', `⏱ 타임어택 · ${min}분`], ['free', '♾️ 무제한']];
+            document.getElementById('timeSelector').innerHTML = opts.map(([mode, label]) =>
+                `<button onclick="setTimeMode('${mode}')" class="py-2 rounded-lg border text-xs font-bold transition ${selectedTimeMode === mode ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}">${label}</button>`
             ).join('');
         }
 
-        function setTimeLimit(sec) {
+        function setTimeMode(mode) {
             if (hasMasterSetWord) return;
-            selectedTimeLimit = sec;
+            selectedTimeMode = mode;
             renderTimeSelector();
         }
 
@@ -1134,7 +1182,8 @@
             listEl.innerHTML = '';
             renderSpectatorChips(players);
             renderAnswerReveal();
-            const avOf = p => avatarHtml(sanitizeAv(p.avatar), 22);
+            renderForceBar(players, masterUid);
+            const avOf = p => avatarHtml(sanitizeAv(p.avatar), 32);
 
             if (isMaster || canSeeDetail()) {
                 titleEl.textContent = isMaster
@@ -1148,7 +1197,7 @@
 
                     const status = p.timedOut ? '<span class="text-rose-500 font-semibold">시간 초과</span>'
                         : (p.completed ? '<span class="text-emerald-600 font-semibold">풀이 완료</span>' : '<span class="text-amber-500">풀이 중...</span>');
-                    let rowsHtml = `<div class="font-bold text-xs text-slate-700 flex justify-between items-center"><span class="flex items-center gap-1.5 mt-1">${avOf(p)}${nameHtml(uid, p.nickname)}</span> ${status}</div>`;
+                    let rowsHtml = `<div class="font-bold text-xs text-slate-700 flex justify-between items-center"><span class="flex items-center gap-1.5 mt-1">${avOf(p)}${nameHtml(uid, p.nickname)}</span> <span class="flex items-center gap-2">${status}${forceBtnFor(uid, p, masterUid)}</span></div>`;
                     rowsHtml += '<div class="space-y-1">';
 
                     const pGuesses = toArr(p.guesses);
@@ -1192,7 +1241,7 @@
                     }
                     miniGridHtml += '</div>';
 
-                    div.innerHTML = `<span class="font-bold text-slate-700 flex items-center gap-1.5 mt-1">${avOf(p)}${nameHtml(uid, p.nickname)}</span> ${miniGridHtml}`;
+                    div.innerHTML = `<span class="font-bold text-slate-700 flex items-center gap-1.5 mt-1">${avOf(p)}${nameHtml(uid, p.nickname)}</span> <span class="flex items-center gap-2">${miniGridHtml}${forceBtnFor(uid, p, masterUid)}</span>`;
                     listEl.appendChild(div);
                 }
             }
@@ -1230,7 +1279,12 @@
             const descEl = document.getElementById('gameOverDesc');
 
             const readableWord = assemblePreview(data.secretWord);
-            let html = `<p class="text-xs text-slate-500 mb-3">정답: <span class="font-bold text-emerald-600">[ ${escapeHtml(data.secretWord)}${readableWord ? ' (' + escapeHtml(readableWord) + ')' : ''} ]</span></p>`;
+            let html = '';
+            if (list[0] && list[0].solved) {
+                const w0 = list[0];
+                html += `<div class="flex flex-col items-center mb-3 pt-4"><div class="mb-1">${avatarHtml(sanitizeAv(w0.avatar), 72, true)}</div><p class="text-[11px] text-amber-600 font-bold mt-2">🏅 이번 라운드 1등</p><p class="text-base font-black text-slate-800">${nameHtml(w0.uid, w0.nickname)}</p></div>`;
+            }
+            html += `<p class="text-xs text-slate-500 mb-3">정답: <span class="font-bold text-emerald-600">[ ${escapeHtml(data.secretWord)}${readableWord ? ' (' + escapeHtml(readableWord) + ')' : ''} ]</span></p>`;
             html += `<div class="space-y-1.5 text-left max-h-44 overflow-y-auto mb-3">`;
 
             list.forEach((p, idx) => {
@@ -1238,7 +1292,7 @@
                 const statusText = p.solved ? `${p.attempts}회 정답 🎉` : (p.timedOut ? '시간 초과 ⏰' : '실패 😢');
                 html += `
                     <div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs">
-                        <span class="font-bold text-slate-700 flex items-center gap-1.5 mt-1 min-w-0"><span class="shrink-0">${rankText}</span>${avatarHtml(sanitizeAv(p.avatar), 22)}${nameHtml(p.uid, p.nickname)}</span>
+                        <span class="font-bold text-slate-700 flex items-center gap-1.5 mt-1 min-w-0"><span class="shrink-0">${rankText}</span>${avatarHtml(sanitizeAv(p.avatar), 32)}${nameHtml(p.uid, p.nickname)}</span>
                         <span class="shrink-0 ${p.solved ? 'text-emerald-600 font-semibold' : 'text-slate-400'}">${statusText} <b class="${p.pts > 0 ? 'text-amber-600' : ''}">+${p.pts}</b></span>
                     </div>`;
             });
@@ -1246,7 +1300,7 @@
             if (mRs && mRs.master) {
                 const mp = data.players[data.masterUid];
                 html += `<div class="flex items-center justify-between p-2 rounded-lg bg-amber-50 border border-amber-100 text-xs">
-                    <span class="font-bold text-amber-700 flex items-center gap-1.5 mt-1">🎯 출제자 ${avatarHtml(sanitizeAv(mp && mp.avatar), 22)}${nameHtml(data.masterUid, mp ? mp.nickname : '')}</span>
+                    <span class="font-bold text-amber-700 flex items-center gap-1.5 mt-1">🎯 출제자 ${avatarHtml(sanitizeAv(mp && mp.avatar), 32)}${nameHtml(data.masterUid, mp ? mp.nickname : '')}</span>
                     <span class="text-amber-700 font-semibold">난이도 보너스 <b>+${mRs.master}</b></span></div>`;
             }
             html += `</div>`;
@@ -1255,14 +1309,14 @@
             if (my) {
                 const parts = my.role === 'master' ? [`출제 보너스 +${my.master}`] :
                     [`기본 ${my.base}`, my.speed ? `스피드 +${my.speed}` : '', my.time ? `시간 +${my.time}` : '', my.hint ? `힌트 -${my.hint}` : ''].filter(Boolean);
-                html += `<p class="text-[11px] text-slate-500 mb-2">내 점수 <b class="text-amber-600">+${my.total}</b> (${parts.join(' · ')})</p>`;
+                html += `<p class="text-[11px] text-slate-500 mb-2">내 점수 <b class="text-amber-600">+${my.total}</b> (${parts.join(' · ')}) <button onclick="openScoreHelp()" class="underline text-slate-400">점수 규칙</button></p>`;
             }
 
             const st = withRanks(getStandings(data)).slice(0, 8);
             html += `<p class="text-xs font-black text-slate-700 text-left mb-1">📊 누적 순위 <span class="font-medium text-slate-400">(이번 라운드 반영)</span></p><div class="space-y-1 text-left max-h-36 overflow-y-auto mb-4">`;
             st.forEach(x => {
                 html += `<div class="flex items-center justify-between p-1.5 rounded-lg ${x.uid === myUid ? 'bg-emerald-50' : 'bg-white'} border border-slate-100 text-xs">
-                    <span class="flex items-center gap-1.5 mt-1"><span class="w-5 text-center font-black">${x.total > 0 ? rankMedal(x.rank) : x.rank}</span>${avatarHtml(sanitizeAv(x.avatar), 20)}${nameHtml(x.uid, x.nickname)}</span>
+                    <span class="flex items-center gap-1.5 mt-1"><span class="w-5 text-center font-black">${x.total > 0 ? rankMedal(x.rank) : x.rank}</span>${avatarHtml(sanitizeAv(x.avatar), 30)}${nameHtml(x.uid, x.nickname)}</span>
                     <span class="font-black tabular-nums">${x.total}점</span></div>`;
             });
             html += `</div>`;
@@ -1359,13 +1413,11 @@
             isResultsShown = false;
             solvedTimestamp = null;
             timedOut = false;
-            invalidCount = 0;
             makerWord = "";
             hasMasterSetWord = false;
             document.getElementById('gameOverModal').classList.add('hidden');
             initBoard();
             renderBoard();
-            updateInvalidBadge();
             if (!(opts && opts.skipSync)) syncMyProgress();
             updateHintButton();
         }
@@ -1409,6 +1461,9 @@
                 let btns = '';
                 if (!p.spectator && !isCurMaster) {
                     btns += `<button data-uid="${escapeHtml(uid)}" onclick="hostSetMaster(this.dataset.uid)" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-md">출제자 지정</button>`;
+                }
+                if (!p.spectator && !isCurMaster && !p.completed && data.secretWord) {
+                    btns += `<button data-uid="${escapeHtml(uid)}" onclick="forceSpectate(this.dataset.uid)" class="px-2 py-1 bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold rounded-md">관전 전환</button>`;
                 }
                 if (!isSelf) {
                     btns += `<button data-uid="${escapeHtml(uid)}" onclick="hostKick(this.dataset.uid)" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-md">강퇴</button>`;
@@ -1470,14 +1525,14 @@
         function leaveRoomLocal() {
             cleanupChat(currentRoomCode); // [업그레이드 3] 채팅방 정리
             stopTimerLoop();
-            invalidCount = 0; timedOut = false; timeUpKey = null;
+            timedOut = false; timeUpKey = null;
             leaderUids = new Set(); leaderInit = false; myPrevRank = null;
-            document.getElementById('shopModal').classList.add('hidden');
+            ['shopModal', 'casinoModal', 'scoreHelpModal'].forEach(id => document.getElementById(id).classList.add('hidden'));
             currentRoomCode = null;
             isMaster = false; isSpectator = false; isHost = false;
             hostUid = null; lastRoomData = null; secretWord = "";
             if (hintTimer) { clearInterval(hintTimer); hintTimer = null; }
-            ['hintModal', 'hostModal', 'gameOverModal', 'hintBanner', 'hintBar', 'multiplayerInfo', 'spectatorDashboard', 'timerRow', 'rankPanel', 'timeSelectorRow', 'answerReveal', 'invalidBadge']
+            ['hintModal', 'hostModal', 'gameOverModal', 'hintBanner', 'hintBar', 'multiplayerInfo', 'spectatorDashboard', 'timerRow', 'rankPanel', 'timeSelectorRow', 'answerReveal', 'forceBar']
                 .forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById('board').classList.remove('hidden');
             document.getElementById('keyboard').classList.remove('hidden');
@@ -1500,7 +1555,7 @@
 
         function activeVoterUids(sess) {
             const present = (lastRoomData && lastRoomData.players) || {};
-            return Object.keys((sess && sess.voters) || {}).filter(u => present[u]);
+            return Object.keys((sess && sess.voters) || {}).filter(u => present[u] && !present[u].spectator);
         }
 
         function isHintOpen() {
@@ -1537,6 +1592,7 @@
             }
             hostBtn.classList.toggle('hidden', !isHost);
             wrap.classList.toggle('hidden', !currentRoomCode);
+            updateSpectateBtn();
         }
 
         function renderHintBar(data) {
@@ -1616,11 +1672,11 @@
                 if (approve + reject === 0) result = { type: 'none' };
                 else if (reject >= approve) result = { type: 'reject' };
                 else {
-                    let best = -1, bestCnt = 0;
-                    Object.keys(tally).map(Number).sort((a, b) => a - b).forEach(i => {
-                        if (tally[i] > bestCnt) { bestCnt = tally[i]; best = i; }
-                    });
-                    result = { type: 'reveal', index: best };
+                    let bestCnt = 0;
+                    Object.keys(tally).forEach(k => { bestCnt = Math.max(bestCnt, tally[k]); });
+                    const tied = Object.keys(tally).map(Number).filter(i => tally[i] === bestCnt);
+                    const best = tied[Math.floor(Math.random() * tied.length)];   // 동점이면 랜덤
+                    result = { type: 'reveal', index: best, tie: tied.length > 1 };
                     cur.revealed = cur.revealed || {};
                     cur.revealed['p' + best] = true;
                 }
@@ -1646,7 +1702,7 @@
             const r = sess.result || { type: 'none' };
             let text;
             if (r.type === 'reveal') {
-                text = `💡 ${r.index + 1}번째 자리 '${secretWord[r.index] || '?'}' 공개! (찬성 ${r.approve} · 거절 ${r.reject})`;
+                text = `💡 ${r.index + 1}번째 자리 '${secretWord[r.index] || '?'}' 공개! (찬성 ${r.approve} · 거절 ${r.reject})${r.tie ? ' 🎲 동점이라 랜덤으로 뽑았어요!' : ''}`;
             } else if (r.type === 'reject') {
                 text = `🙅 힌트 요청이 거절됐어요 (찬성 ${r.approve} · 거절 ${r.reject})`;
             } else {
@@ -1938,7 +1994,7 @@
             div.className = `chat-msg flex items-end gap-1.5 mt-2 ${isMe ? 'flex-row-reverse' : ''}`;
             div.dataset.uid = msg.uid || '';
             div.innerHTML = `
-                <div class="pt-2">${avatarHtml(sanitizeAv(msg.av), 28)}</div>
+                <div class="pt-3">${avatarHtml(sanitizeAv(msg.av), 40)}</div>
                 <div class="flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}">
                     <span class="text-[10px] text-slate-400 mb-0.5 px-1">${nameHtml(msg.uid, msg.nickname)}</span>
                     <div class="chat-bubble px-3 py-1.5 rounded-2xl max-w-[100%] break-words ${isMe ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm'}">
@@ -1979,7 +2035,7 @@
             const tag = t && t.tagName;
             // 채팅창이나 닉네임 입력칸에 타이핑 중일 때는 게임 키보드가 작동하지 않도록 보호
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
-            if (['lobbyModal', 'hostModal', 'hintModal', 'gameOverModal', 'shopModal'].some(id => !document.getElementById(id).classList.contains('hidden'))) return;
+            if (['lobbyModal', 'hostModal', 'hintModal', 'gameOverModal', 'shopModal', 'casinoModal', 'scoreHelpModal'].some(id => !document.getElementById(id).classList.contains('hidden'))) return;
 
             if (e.key === 'Enter') {
                 if (tag === 'BUTTON') return;
@@ -2005,29 +2061,68 @@
         //  🐾 캐릭터 / 코인 / 상점  (코인·보유 아이템은 이 기기(localStorage)에 저장돼요)
         // ═══════════════════════════════════════════════════════════════
         const AVATAR_BASES = [
+            // 기본(무료)
             { id: '🐶', n: '강아지', p: 0 }, { id: '🐱', n: '고양이', p: 0 }, { id: '🐰', n: '토끼', p: 0 },
             { id: '🐻', n: '곰', p: 0 }, { id: '🐼', n: '판다', p: 0 }, { id: '🦊', n: '여우', p: 0 },
             { id: '🐧', n: '펭귄', p: 0 }, { id: '🐸', n: '개구리', p: 0 },
+            { id: '🐭', n: '쥐', p: 100 }, { id: '🐹', n: '햄스터', p: 100 }, { id: '🐤', n: '병아리', p: 100 },
+            { id: '🐮', n: '소', p: 150 }, { id: '🐷', n: '돼지', p: 150 }, { id: '🐵', n: '원숭이', p: 150 },
+            { id: '🐔', n: '닭', p: 150 }, { id: '🐝', n: '꿀벌', p: 150 }, { id: '🐞', n: '무당벌레', p: 150 },
             { id: '🐯', n: '호랑이', p: 200 }, { id: '🦁', n: '사자', p: 200 }, { id: '🐨', n: '코알라', p: 200 },
-            { id: '🦄', n: '유니콘', p: 500 }, { id: '🐲', n: '용', p: 700 }
+            { id: '🦆', n: '오리', p: 200 }, { id: '🐢', n: '거북이', p: 200 }, { id: '🦋', n: '나비', p: 200 }, { id: '🐌', n: '달팽이', p: 200 },
+            { id: '🦉', n: '부엉이', p: 250 }, { id: '🐴', n: '말', p: 250 }, { id: '🐗', n: '멧돼지', p: 250 },
+            { id: '🦔', n: '고슴도치', p: 250 }, { id: '🐺', n: '늑대', p: 250 }, { id: '🦇', n: '박쥐', p: 250 },
+            { id: '🐙', n: '문어', p: 300 }, { id: '🐬', n: '돌고래', p: 300 }, { id: '🦀', n: '게', p: 300 }, { id: '🐠', n: '열대어', p: 300 },
+            { id: '🦒', n: '기린', p: 300 }, { id: '🦓', n: '얼룩말', p: 300 }, { id: '🐘', n: '코끼리', p: 300 }, { id: '🦘', n: '캥거루', p: 300 },
+            { id: '🐳', n: '고래', p: 350 }, { id: '🐊', n: '악어', p: 350 }, { id: '🦅', n: '독수리', p: 350 },
+            { id: '🦜', n: '앵무새', p: 350 }, { id: '🦛', n: '하마', p: 350 }, { id: '🦏', n: '코뿔소', p: 350 },
+            { id: '🦈', n: '상어', p: 400 }, { id: '🦚', n: '공작새', p: 400 }, { id: '👻', n: '유령', p: 400 }, { id: '🎃', n: '호박', p: 400 },
+            { id: '🦄', n: '유니콘', p: 500 }, { id: '👽', n: '외계인', p: 500 }, { id: '🤖', n: '로봇', p: 500 },
+            { id: '🦖', n: '티라노', p: 600 }, { id: '🦕', n: '공룡', p: 600 },
+            { id: '🐲', n: '용', p: 700 }, { id: '🐉', n: '드래곤', p: 800 }
         ];
         const SHOP_ITEMS = {
             hat: [
-                { id: '🎀', n: '리본', p: 120 }, { id: '🧢', n: '야구모자', p: 150 }, { id: '👒', n: '밀짚모자', p: 200 },
-                { id: '🎩', n: '신사모자', p: 250 }, { id: '🎓', n: '학사모', p: 300 }, { id: '👑', n: '왕관', p: 600 }
+                { id: '🎀', n: '리본', p: 100 }, { id: '🧢', n: '야구모자', p: 150 }, { id: '🌸', n: '벚꽃', p: 150 }, { id: '🍀', n: '클로버', p: 150 },
+                { id: '👒', n: '밀짚모자', p: 200 }, { id: '🎧', n: '헤드폰', p: 200 }, { id: '🍄', n: '버섯', p: 200 },
+                { id: '⛑️', n: '구조모자', p: 250 }, { id: '🎩', n: '신사모자', p: 250 }, { id: '🌻', n: '해바라기', p: 250 }, { id: '🍉', n: '수박', p: 250 },
+                { id: '🎓', n: '학사모', p: 300 }, { id: '⭐', n: '별', p: 300 },
+                { id: '🔥', n: '불꽃', p: 400 }, { id: '🌈', n: '무지개', p: 400 }, { id: '👑', n: '왕관', p: 600 }
             ],
-            face: [{ id: '👓', n: '안경', p: 150 }, { id: '🕶️', n: '선글라스', p: 200 }, { id: '🥽', n: '고글', p: 250 }],
-            neck: [{ id: '🧣', n: '목도리', p: 180 }, { id: '👔', n: '넥타이', p: 200 }, { id: '📿', n: '목걸이', p: 250 }, { id: '🏅', n: '금메달', p: 350 }],
+            face: [
+                { id: '👓', n: '안경', p: 150 }, { id: '😷', n: '마스크', p: 150 }, { id: '🕶️', n: '선글라스', p: 200 }, { id: '💋', n: '입술', p: 200 },
+                { id: '🥽', n: '고글', p: 250 }, { id: '🌹', n: '장미', p: 250 }, { id: '🎭', n: '가면', p: 300 }, { id: '✨', n: '반짝이', p: 300 }, { id: '💫', n: '별빛', p: 400 }
+            ],
+            neck: [
+                { id: '🎗️', n: '리본뱃지', p: 150 }, { id: '🧣', n: '목도리', p: 180 }, { id: '🔔', n: '방울', p: 200 }, { id: '👔', n: '넥타이', p: 200 },
+                { id: '📿', n: '목걸이', p: 250 }, { id: '🌺', n: '꽃목걸이', p: 250 }, { id: '🔑', n: '열쇠', p: 250 },
+                { id: '📷', n: '카메라', p: 300 }, { id: '🏅', n: '금메달', p: 350 }, { id: '🥇', n: '1등 메달', p: 400 }, { id: '💎', n: '보석', p: 400 }
+            ],
             side: [
-                { id: '🎈', n: '풍선', p: 100 }, { id: '🍦', n: '아이스크림', p: 120 }, { id: '📚', n: '책', p: 150 },
-                { id: '🎸', n: '기타', p: 300 }, { id: '🔮', n: '수정구슬', p: 400 }, { id: '🏆', n: '트로피', p: 500 }
+                { id: '🎈', n: '풍선', p: 100 }, { id: '🍦', n: '아이스크림', p: 120 }, { id: '🍩', n: '도넛', p: 120 }, { id: '🍔', n: '햄버거', p: 120 },
+                { id: '⚽', n: '축구공', p: 150 }, { id: '🏀', n: '농구공', p: 150 }, { id: '📚', n: '책', p: 150 }, { id: '🌂', n: '우산', p: 150 },
+                { id: '🎁', n: '선물', p: 200 }, { id: '🧸', n: '곰인형', p: 200 }, { id: '🎨', n: '팔레트', p: 200 }, { id: '🍰', n: '케이크', p: 200 },
+                { id: '🎤', n: '마이크', p: 250 }, { id: '🎮', n: '게임기', p: 250 }, { id: '🎸', n: '기타', p: 300 }, { id: '🗡️', n: '검', p: 300 },
+                { id: '🛡️', n: '방패', p: 350 }, { id: '🔮', n: '수정구슬', p: 400 }, { id: '🚀', n: '로켓', p: 500 }, { id: '🏆', n: '트로피', p: 500 }
             ],
             bg: [
                 { id: 'mint', n: '민트', p: 100, css: 'linear-gradient(135deg,#d1fae5,#6ee7b7)' },
                 { id: 'sky', n: '하늘', p: 100, css: 'linear-gradient(135deg,#e0f2fe,#7dd3fc)' },
+                { id: 'rose', n: '핑크', p: 100, css: 'linear-gradient(135deg,#ffe4e6,#fda4af)' },
+                { id: 'lemon', n: '레몬', p: 100, css: 'linear-gradient(135deg,#fef9c3,#fde047)' },
+                { id: 'lavender', n: '라벤더', p: 150, css: 'linear-gradient(135deg,#ede9fe,#c4b5fd)' },
+                { id: 'peach', n: '복숭아', p: 150, css: 'linear-gradient(135deg,#ffedd5,#fdba74)' },
+                { id: 'ocean', n: '바다', p: 200, css: 'linear-gradient(135deg,#67e8f9,#3b82f6)' },
+                { id: 'forest', n: '숲', p: 200, css: 'linear-gradient(135deg,#bbf7d0,#16a34a)' },
                 { id: 'sunset', n: '노을', p: 200, css: 'linear-gradient(135deg,#fde68a,#fb7185)' },
+                { id: 'cotton', n: '솜사탕', p: 250, css: 'linear-gradient(135deg,#fbcfe8,#a5f3fc)' },
                 { id: 'night', n: '밤하늘', p: 300, css: 'linear-gradient(135deg,#312e81,#7c3aed)' },
-                { id: 'rainbow', n: '무지개', p: 500, css: 'linear-gradient(135deg,#fca5a5,#fde68a,#86efac,#93c5fd,#c4b5fd)' }
+                { id: 'fire', n: '불꽃', p: 300, css: 'linear-gradient(135deg,#fde047,#f97316,#dc2626)' },
+                { id: 'aurora', n: '오로라', p: 400, css: 'linear-gradient(135deg,#34d399,#3b82f6,#a855f7)' },
+                { id: 'rainbow', n: '무지개', p: 500, css: 'linear-gradient(135deg,#fca5a5,#fde68a,#86efac,#93c5fd,#c4b5fd)' },
+                { id: 'neon', n: '네온', p: 500, css: 'linear-gradient(135deg,#f0abfc,#22d3ee)' },
+                { id: 'gold', n: '황금', p: 600, css: 'linear-gradient(135deg,#fde68a,#f59e0b,#fde68a)' },
+                { id: 'galaxy', n: '은하수', p: 700, css: 'radial-gradient(circle at 30% 30%,#a78bfa,#1e1b4b 70%)' }
             ]
         };
         const SHOP_TABS = [['a', '동물'], ['hat', '모자'], ['face', '얼굴'], ['neck', '목'], ['side', '손/옆'], ['bg', '배경']];
@@ -2037,25 +2132,78 @@
         const defaultProfile = () => ({
             coins: 0,
             owned: AVATAR_BASES.filter(b => b.p === 0).map(b => b.id),
-            eq: { a: '🐶', hat: '', face: '', neck: '', side: '', bg: '' }
+            eq: { a: '🐶', hat: '', face: '', neck: '', side: '', bg: '' },
+            ts: 0
         });
-        function loadProfile() {
+        function parseProfile(p) {
             const d = defaultProfile();
-            try {
-                const raw = localStorage.getItem('wordle_profile');
-                if (raw) {
-                    const p = JSON.parse(raw);
-                    return {
-                        coins: Math.max(0, parseInt(p.coins, 10) || 0),
-                        owned: Array.from(new Set(d.owned.concat(Array.isArray(p.owned) ? p.owned : []))),
-                        eq: Object.assign(d.eq, p.eq || {})
-                    };
-                }
-            } catch (e) {}
-            return d;
+            if (!p || typeof p !== 'object') return d;
+            return {
+                coins: Math.max(0, parseInt(p.coins, 10) || 0),
+                owned: Array.from(new Set(d.owned.concat(Array.isArray(p.owned) ? p.owned : []))),
+                eq: Object.assign(d.eq, p.eq || {}),
+                ts: parseInt(p.ts, 10) || 0
+            };
         }
-        let profile = loadProfile();
-        function saveProfile() { try { localStorage.setItem('wordle_profile', JSON.stringify(profile)); } catch (e) {} }
+
+        // 프로필(코인·보유 아이템·착용)은 '닉네임(아이디)' 기준으로 서버(profiles/)와 이 기기에 같이 저장돼요
+        let profileNick = '';
+        const nickKey = n => encodeURIComponent(String(n || '').trim().toLowerCase()).replace(/\./g, '%2E');
+        const localKeyFor = n => 'wordle_profile::' + (n ? nickKey(n) : '_guest');
+        function loadLocalProfile(n) {
+            try { const raw = localStorage.getItem(localKeyFor(n)); if (raw) return parseProfile(JSON.parse(raw)); } catch (e) {}
+            return null;
+        }
+        let profile = loadLocalProfile('') || (() => {
+            try { const raw = localStorage.getItem('wordle_profile'); if (raw) return parseProfile(JSON.parse(raw)); } catch (e) {}
+            return defaultProfile();
+        })();
+
+        let profileSaveTimer = null;
+        function saveProfile() {
+            profile.ts = Date.now();
+            try { localStorage.setItem(localKeyFor(profileNick), JSON.stringify(profile)); } catch (e) {}
+            if (!db || !profileNick) return;
+            clearTimeout(profileSaveTimer);
+            profileSaveTimer = setTimeout(pushProfileRemote, 600);
+        }
+        function pushProfileRemote() {
+            if (!db || !profileNick) return;
+            try {
+                const p = db.ref('profiles/' + nickKey(profileNick)).set({ nick: profileNick, coins: profile.coins, owned: profile.owned, eq: profile.eq, ts: profile.ts });
+                if (p && p.catch) p.catch(() => {});
+            } catch (e) {}
+        }
+        function fetchRemoteProfile(n) {
+            return new Promise(resolve => {
+                if (!db) { resolve(null); return; }
+                let done = false;
+                const finish = v => { if (!done) { done = true; clearTimeout(t); resolve(v); } };
+                const t = setTimeout(() => finish(null), 2500);
+                try {
+                    db.ref('profiles/' + nickKey(n)).once('value').then(snap => finish(snap.val() ? parseProfile(snap.val()) : null)).catch(() => finish(null));
+                } catch (e) { finish(null); }
+            });
+        }
+        // 닉네임에 연결된 프로필로 전환: 서버/기기 중 가장 최근 저장본을 사용
+        function switchProfile(nick) {
+            nick = String(nick || '').trim();
+            if (!nick || nick.toLowerCase() === profileNick.toLowerCase()) { if (nick) profileNick = nick; return Promise.resolve(); }
+            try { localStorage.setItem('wordle_nick', nick); } catch (e) {}
+            const guestBase = profileNick === '' ? profile : null;   // 닉네임 없이 모아둔 코인은 첫 닉네임에 이어붙여요
+            const local = loadLocalProfile(nick);
+            return fetchRemoteProfile(nick).then(remote => {
+                let chosen = null;
+                if (remote && local) chosen = (remote.ts >= local.ts) ? remote : local;
+                else chosen = remote || local || guestBase || defaultProfile();
+                profileNick = nick;
+                profile = chosen;
+                saveProfile();
+                renderProfileBtn();
+                if (!document.getElementById('shopModal').classList.contains('hidden')) renderShop();
+                pushMyAvatar();
+            });
+        }
 
         // 외부(DB)에서 온 아바타 데이터는 상점 목록에 있는 값만 통과시켜요 (XSS/이상값 방지)
         function sanitizeAv(av) {
@@ -2069,22 +2217,25 @@
         }
         function myAvatar() { return sanitizeAv(profile.eq); }
 
-        function avatarHtml(av, size) {
+        function avatarHtml(av, size, bounce) {
             av = av || sanitizeAv(null);
             size = size || 40;
             const bgItem = SHOP_ITEMS.bg.find(b => b.id === av.bg);
             const bg = bgItem ? bgItem.css : '#f1f5f9';
-            return `<span class="av" style="width:${size}px;height:${size}px;background:${bg};font-size:${Math.round(size * 0.64)}px">` +
+            const r = n => Math.round(size * n);
+            // 모자/옆 장식이 바깥으로 튀어나오는 만큼 여백을 줘서 다른 요소와 겹치지 않게
+            const margin = `margin:${av.hat ? r(0.26) : 0}px ${av.side ? r(0.3) : 0}px ${av.neck ? r(0.12) : 0}px 0;`;
+            return `<span class="av${bounce ? ' av-bounce' : ''}" style="width:${size}px;height:${size}px;background:${bg};font-size:${r(0.62)}px;${margin}">` +
                 `<span class="av-base">${av.a}</span>` +
-                (av.hat ? `<span class="av-hat" style="font-size:${Math.round(size * 0.46)}px;top:${-Math.round(size * 0.24)}px">${av.hat}</span>` : '') +
-                (av.face ? `<span class="av-face" style="font-size:${Math.round(size * 0.4)}px;top:${Math.round(size * 0.3)}px">${av.face}</span>` : '') +
-                (av.neck ? `<span class="av-neck" style="font-size:${Math.round(size * 0.36)}px;bottom:${-Math.round(size * 0.12)}px">${av.neck}</span>` : '') +
-                (av.side ? `<span class="av-side" style="font-size:${Math.round(size * 0.42)}px;right:${-Math.round(size * 0.3)}px;bottom:${-Math.round(size * 0.04)}px">${av.side}</span>` : '') +
+                (av.hat ? `<span class="av-hat" style="font-size:${r(0.58)}px;top:${-r(0.3)}px">${av.hat}</span>` : '') +
+                (av.face ? `<span class="av-face" style="font-size:${r(0.5)}px;top:${r(0.27)}px">${av.face}</span>` : '') +
+                (av.neck ? `<span class="av-neck" style="font-size:${r(0.46)}px;bottom:${-r(0.16)}px">${av.neck}</span>` : '') +
+                (av.side ? `<span class="av-side" style="font-size:${r(0.52)}px;right:${-r(0.32)}px;bottom:${-r(0.02)}px">${av.side}</span>` : '') +
                 `</span>`;
         }
 
         function renderProfileBtn() {
-            document.getElementById('profileBtn').innerHTML = `<span class="mt-0.5">${avatarHtml(myAvatar(), 24)}</span><span>🪙 ${profile.coins}</span>`;
+            document.getElementById('profileBtn').innerHTML = `<span class="mt-0.5">${avatarHtml(myAvatar(), 34)}</span><span>🪙 ${profile.coins}</span>`;
         }
 
         function awardCoinsOnce(key, amount) {
@@ -2109,7 +2260,10 @@
         function setShopTab(cat) { shopTab = cat; renderShop(); }
 
         function renderShop() {
-            document.getElementById('shopPreview').innerHTML = avatarHtml(myAvatar(), 76);
+            document.getElementById('shopPreview').innerHTML = avatarHtml(myAvatar(), 96, true);
+            document.getElementById('shopOwner').textContent = profileNick
+                ? `🔗 '${profileNick}' 아이디에 저장돼요 (방을 새로 만들어도 유지!)`
+                : '닉네임으로 방에 입장하면 그 아이디에 코인이 저장돼요.';
             document.getElementById('shopCoins').textContent = `🪙 ${profile.coins}`;
             document.getElementById('shopTabs').innerHTML = SHOP_TABS.map(([cat, label]) =>
                 `<button onclick="setShopTab('${cat}')" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition ${shopTab === cat ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`
@@ -2249,14 +2403,17 @@
             leaderInit = true;
 
             const view = rankExpanded ? st : st.filter((x, i) => i < 3 || x.uid === myUid);
-            document.getElementById('rankList').innerHTML = view.map(x => `
-                <div class="flex items-center gap-2 px-2 py-1 rounded-lg border text-xs ${x.uid === myUid ? 'bg-emerald-100 border-emerald-300' : 'bg-white border-emerald-100'}">
-                    <span class="w-6 text-center font-black">${x.total > 0 ? rankMedal(x.rank) : x.rank}</span>
-                    <span class="mt-1">${avatarHtml(sanitizeAv(x.avatar), 22)}</span>
+            document.getElementById('rankList').innerHTML = view.map(x => {
+                const isLead = leaderUids.has(x.uid);
+                return `
+                <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs ${isLead ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200' : (x.uid === myUid ? 'bg-emerald-100 border-emerald-300' : 'bg-white border-emerald-100')}">
+                    <span class="w-6 text-center font-black text-sm">${x.total > 0 ? rankMedal(x.rank) : x.rank}</span>
+                    <span>${avatarHtml(sanitizeAv(x.avatar), isLead ? 46 : 34, isLead)}</span>
                     <span class="flex-1 truncate font-bold text-slate-700">${nameHtml(x.uid, x.nickname)}${x.isMaster ? ' <span class="text-[10px] text-emerald-600 font-semibold">출제</span>' : ''}</span>
                     ${x.live > 0 ? `<span class="text-[10px] text-emerald-600 font-bold">+${x.live}</span>` : ''}
-                    <span class="font-black tabular-nums text-slate-800">${x.total}</span>
-                </div>`).join('');
+                    <span class="font-black tabular-nums text-slate-800 text-sm">${x.total}</span>
+                </div>`;
+            }).join('');
 
             const tgl = document.getElementById('rankToggleBtn');
             tgl.classList.toggle('hidden', st.length <= 3);
@@ -2351,7 +2508,272 @@
             });
         }
 
+
+        // ═══════════════════════════════════════════════════════════════
+        //  👀 관전 ↔ 🎮 문제 풀기 전환 / 강제 관전 전환(출제자·방장)
+        // ═══════════════════════════════════════════════════════════════
+        function updateSpectateBtn() {
+            const btn = document.getElementById('spectateBtn');
+            if (!btn) return;
+            const me = lastRoomData && lastRoomData.players && lastRoomData.players[myUid];
+            // 출제자는 전환 불가 / 풀이를 이미 마친 참가자는 어차피 관전 화면
+            const show = !!currentRoomCode && !isMaster && !!me && !(isGameOver && !isSpectator);
+            btn.classList.toggle('hidden', !show);
+            if (!show) return;
+            const roundActive = !!(lastRoomData && lastRoomData.secretWord);
+            if (isSpectator) {
+                btn.textContent = !roundActive ? '🎮 문제 풀기 전환' : (me.waiting ? '🎮 참여 예약 취소' : '🎮 다음 판부터 참여');
+                btn.className = 'px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition';
+            } else {
+                btn.textContent = '👀 관전 전환';
+                btn.className = 'px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg transition';
+            }
+        }
+
+        function toggleSpectate() {
+            if (!db || !currentRoomCode || isMaster || !lastRoomData) return;
+            const me = (lastRoomData.players || {})[myUid];
+            if (!me) return;
+            const base = `rooms/${currentRoomCode}/players/${myUid}`;
+            const roundActive = !!lastRoomData.secretWord;
+            if (!isSpectator) {
+                if (isGameOver) { showToast('이미 풀이를 마쳤어요!'); return; }
+                if (roundActive && !confirm('이번 라운드를 포기하고 관전 모드로 전환할까요?\n(이번 라운드 점수는 없어요. 언제든 다시 문제 풀기로 돌아올 수 있어요.)')) return;
+                db.ref(base).update({ spectator: true, completed: true, waiting: null, timedOut: null });
+                isSpectator = true;
+                refreshRoomView();
+                updateHintButton();
+                showToast('👀 관전 모드로 전환했어요.');
+            } else if (!roundActive) {
+                // 출제 전에는 바로 문제 풀기로 전환
+                db.ref(base).update({ spectator: false, completed: false, waiting: null, guesses: [], solvedTimestamp: 0, timedOut: null });
+                isSpectator = false;
+                resetGameData({ skipSync: true });
+                refreshRoomView();
+                updateHintButton();
+                showToast('🎮 문제 풀기 모드로 전환했어요! 출제를 기다려 주세요.');
+            } else {
+                // 진행 중인 라운드는 다음 라운드부터 참여 (정답 보고 들어오는 반칙 방지)
+                const next = !me.waiting;
+                db.ref(base).update({ waiting: next ? true : null });
+                showToast(next ? '⏳ 다음 라운드부터 문제를 풀 수 있게 예약했어요!' : '예약을 취소했어요. 계속 관전해요.');
+            }
+        }
+
+        function forceBtnFor(uid, p, masterUid) {
+            if (!(isMaster || isHost) || p.spectator || p.completed || uid === masterUid) return '';
+            return `<button data-uid="${escapeHtml(uid)}" onclick="forceSpectate(this.dataset.uid)" class="px-2 py-0.5 bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold rounded-md">관전 전환</button>`;
+        }
+
+        function renderForceBar(players, masterUid) {
+            const el = document.getElementById('forceBar');
+            if (!el) return;
+            const pending = Object.entries(players || {}).filter(([u, p]) => u !== masterUid && !p.spectator && !p.completed);
+            if (!(isMaster || isHost) || !(lastRoomData && lastRoomData.secretWord) || pending.length === 0) {
+                el.classList.add('hidden'); el.innerHTML = ''; return;
+            }
+            el.classList.remove('hidden');
+            el.innerHTML = `<button onclick="forceSpectateAll()" class="w-full py-2 bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-xs font-bold rounded-lg transition">🚦 아직 풀고 있는 ${pending.length}명을 관전자로 전환해서 진행하기</button>`;
+        }
+
+        function forceSpectate(uid) {
+            if (!(isMaster || isHost) || !db || !currentRoomCode || !lastRoomData) return;
+            const p = (lastRoomData.players || {})[uid];
+            if (!p || uid === lastRoomData.masterUid || p.spectator || p.completed) return;
+            if (!confirm(`'${p.nickname}'님을 관전자로 전환할까요?\n(이번 라운드 풀이는 종료돼요. 본인이 원하면 다시 문제 풀기로 돌아올 수 있어요.)`)) return;
+            db.ref(`rooms/${currentRoomCode}/players/${uid}`).update({ spectator: true, completed: true, waiting: null, timedOut: null });
+            showToast(`👀 ${p.nickname}님을 관전자로 전환했어요.`);
+        }
+
+        function forceSpectateAll() {
+            if (!(isMaster || isHost) || !db || !currentRoomCode || !lastRoomData) return;
+            const d = lastRoomData;
+            const pending = Object.entries(d.players || {}).filter(([u, p]) => u !== d.masterUid && !p.spectator && !p.completed);
+            if (pending.length === 0) return;
+            if (!confirm(`아직 풀이를 끝내지 않은 ${pending.length}명을 모두 관전자로 전환할까요?\n(이번 라운드가 바로 마무리돼요.)`)) return;
+            const ups = {};
+            pending.forEach(([u]) => {
+                ups[`players/${u}/spectator`] = true;
+                ups[`players/${u}/completed`] = true;
+                ups[`players/${u}/waiting`] = null;
+                ups[`players/${u}/timedOut`] = null;
+            });
+            db.ref(`rooms/${currentRoomCode}`).update(ups);
+            showToast(`👀 ${pending.length}명을 관전자로 전환했어요.`);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  🎰 코인 도박장 (배팅액은 시작할 때 바로 차감 → 새로고침으로 취소 불가)
+        // ═══════════════════════════════════════════════════════════════
+        const CASINO_MIN_BET = 10;
+        const CASINO_GAMES = [['coin', '🪙 동전'], ['slot', '🎰 슬롯'], ['roulette', '🎡 룰렛']];
+        const SLOT_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+        const ROULETTE = [
+            { m: 0, w: 43, t: '💥 꽝' }, { m: 0.5, w: 20, t: '😅 ×0.5' }, { m: 1.5, w: 20, t: '🙂 ×1.5' },
+            { m: 2, w: 11, t: '😄 ×2' }, { m: 5, w: 5, t: '🤩 ×5' }, { m: 10, w: 1, t: '🎉 ×10 JACKPOT' }
+        ];
+        let casinoGame = 'coin', casinoBet = 50, casinoBusy = false, casinoLog = [];
+
+        function casinoRand() {
+            try { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] / 4294967296; } catch (e) { return Math.random(); }
+        }
+        function openCasino() {
+            closeShop();
+            casinoBet = Math.max(CASINO_MIN_BET, Math.min(casinoBet, Math.max(CASINO_MIN_BET, profile.coins)));
+            renderCasino();
+            document.getElementById('casinoResult').textContent = '';
+            document.getElementById('casinoModal').classList.remove('hidden');
+        }
+        function closeCasino() {
+            document.getElementById('casinoModal').classList.add('hidden');
+            renderProfileBtn();
+        }
+        function setCasinoGame(g) { if (casinoBusy) return; casinoGame = g; renderCasino(); document.getElementById('casinoResult').textContent = ''; }
+        function setCasinoBet(v) {
+            if (casinoBusy) return;
+            if (v === 'all') {
+                if (profile.coins < CASINO_MIN_BET) { showToast('코인이 부족해요!'); return; }
+                casinoBet = profile.coins;
+            } else casinoBet = v;
+            document.getElementById('casinoBetInput').value = casinoBet;
+        }
+        function casinoBetFromInput() { casinoBet = parseInt(document.getElementById('casinoBetInput').value, 10) || 0; }
+
+        function renderCasino() {
+            document.getElementById('casinoCoins').textContent = `🪙 ${profile.coins}`;
+            document.getElementById('casinoTabs').innerHTML = CASINO_GAMES.map(([g, label]) =>
+                `<button onclick="setCasinoGame('${g}')" class="py-2 rounded-lg text-xs font-black transition ${casinoGame === g ? 'bg-amber-400 text-slate-900' : 'bg-white/10 text-white hover:bg-white/20'}">${label}</button>`).join('');
+            document.getElementById('casinoBetChips').innerHTML = [10, 50, 100, 500, 'all'].map(v =>
+                `<button onclick="setCasinoBet(${v === 'all' ? "'all'" : v})" class="py-1.5 rounded-lg text-xs font-bold bg-white/10 hover:bg-white/20 transition">${v === 'all' ? '올인' : v}</button>`).join('');
+            const inp = document.getElementById('casinoBetInput');
+            if (document.activeElement !== inp) inp.value = casinoBet;
+
+            let stage = '', payout = '';
+            if (casinoGame === 'coin') {
+                stage = `<div id="coinFace" class="text-6xl leading-none">🪙</div>
+                    <div class="grid grid-cols-2 gap-2 w-full">
+                        <button onclick="casinoCoin('h')" class="py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-sm transition">🙂 앞면</button>
+                        <button onclick="casinoCoin('t')" class="py-2.5 rounded-xl bg-indigo-400 hover:bg-indigo-300 text-slate-900 font-black text-sm transition">🌙 뒷면</button>
+                    </div>`;
+                payout = '앞/뒤를 맞히면 배팅액의 <b>1.9배</b>를 돌려받아요. (확률 50%)';
+            } else if (casinoGame === 'slot') {
+                stage = `<div class="flex gap-2 text-5xl leading-none"><span id="reel0">🎰</span><span id="reel1">🎰</span><span id="reel2">🎰</span></div>
+                    <button onclick="casinoSlot()" class="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black text-sm transition">🎰 레버 당기기</button>`;
+                payout = '7️⃣7️⃣7️⃣ <b>×25</b> · 같은 그림 3개 <b>×9</b> · 2개 일치 <b>본전(×1)</b> · 모두 다르면 꽝';
+            } else {
+                stage = `<div id="rouletteFace" class="text-2xl font-black leading-none h-8">🎡</div>
+                    <button onclick="casinoRoulette()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-sm transition">🎡 룰렛 돌리기</button>`;
+                payout = ROULETTE.map(r => `${r.t} (${r.w}%)`).join(' · ');
+            }
+            document.getElementById('casinoStage').innerHTML = stage;
+            document.getElementById('casinoPayout').innerHTML = payout;
+            document.getElementById('casinoLog').innerHTML = casinoLog.map(l => `<div>${l}</div>`).join('');
+        }
+
+        function casinoSetButtons(disabled) {
+            document.querySelectorAll('#casinoStage button, #casinoBetChips button, #casinoTabs button').forEach(b => {
+                b.disabled = disabled;
+                b.classList.toggle('opacity-50', disabled);
+            });
+        }
+        function casinoRefreshMeta() {
+            document.getElementById('casinoCoins').textContent = `🪙 ${profile.coins}`;
+            document.getElementById('casinoLog').innerHTML = casinoLog.map(l => `<div>${l}</div>`).join('');
+            if (casinoBet > profile.coins) {
+                casinoBet = Math.max(CASINO_MIN_BET, profile.coins);
+                document.getElementById('casinoBetInput').value = casinoBet;
+            }
+            casinoSetButtons(false);
+        }
+
+        // 배팅액 차감 (성공하면 배팅액, 실패하면 0)
+        function casinoTake() {
+            if (casinoBusy) return 0;
+            const bet = Math.floor(casinoBet);
+            if (!(bet >= CASINO_MIN_BET)) { showToast(`최소 배팅은 ${CASINO_MIN_BET} 코인이에요.`); return 0; }
+            if (bet > profile.coins) { showToast('코인이 부족해요! 라운드에서 점수를 더 모아오세요 🙂'); return 0; }
+            casinoBusy = true;
+            profile.coins -= bet;
+            saveProfile();
+            renderProfileBtn();
+            document.getElementById('casinoCoins').textContent = `🪙 ${profile.coins}`;
+            document.getElementById('casinoResult').textContent = '';
+            casinoSetButtons(true);
+            return bet;
+        }
+
+        function casinoPay(bet, mult, label) {
+            const win = Math.floor(bet * mult);
+            profile.coins += win;
+            saveProfile();
+            renderProfileBtn();
+            const net = win - bet;
+            const res = document.getElementById('casinoResult');
+            res.className = 'text-center text-sm font-black min-h-[24px] mt-3 ' + (net > 0 ? 'text-emerald-300' : (net === 0 ? 'text-slate-200' : 'text-rose-300'));
+            res.textContent = net > 0 ? `🎉 +${net} 코인 획득!` : (net === 0 ? '😐 본전이에요!' : `😢 ${net} 코인...`);
+            casinoLog.unshift(`${label} → ${net > 0 ? '+' : ''}${net}`);
+            if (casinoLog.length > 6) casinoLog.pop();
+            casinoBusy = false;
+            casinoRefreshMeta();
+        }
+
+        function casinoCoin(pick) {
+            const bet = casinoTake();
+            if (!bet) return;
+            const face = document.getElementById('coinFace');
+            let n = 0;
+            const iv = setInterval(() => { if (face) face.textContent = (n++ % 2) ? '🙂' : '🌙'; }, 90);
+            setTimeout(() => {
+                clearInterval(iv);
+                const heads = casinoRand() < 0.5;
+                if (face) face.textContent = heads ? '🙂' : '🌙';
+                casinoPay(bet, (heads ? 'h' : 't') === pick ? 1.9 : 0, `동전 ${heads ? '앞' : '뒤'}`);
+            }, 1100);
+        }
+
+        function casinoSlot() {
+            const bet = casinoTake();
+            if (!bet) return;
+            const pick = () => SLOT_SYMBOLS[Math.floor(casinoRand() * SLOT_SYMBOLS.length)];
+            const final = [pick(), pick(), pick()];
+            const els = [0, 1, 2].map(i => document.getElementById('reel' + i));
+            const ivs = els.map(el => setInterval(() => { if (el) el.textContent = SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)]; }, 70));
+            [0, 1, 2].forEach(i => setTimeout(() => { clearInterval(ivs[i]); if (els[i]) els[i].textContent = final[i]; }, 700 + i * 350));
+            setTimeout(() => {
+                const [a, b, c] = final;
+                let mult = 0, label = '슬롯 꽝';
+                if (a === b && b === c) { mult = a === '7️⃣' ? 25 : 9; label = a === '7️⃣' ? '슬롯 777 🎉' : '슬롯 3개 일치'; }
+                else if (a === b || b === c || a === c) { mult = 1; label = '슬롯 2개 일치'; }
+                casinoPay(bet, mult, label);
+            }, 700 + 2 * 350 + 150);
+        }
+
+        function casinoRoulette() {
+            const bet = casinoTake();
+            if (!bet) return;
+            const face = document.getElementById('rouletteFace');
+            const iv = setInterval(() => { if (face) face.textContent = ROULETTE[Math.floor(Math.random() * ROULETTE.length)].t; }, 80);
+            setTimeout(() => {
+                clearInterval(iv);
+                let r = casinoRand() * ROULETTE.reduce((s, x) => s + x.w, 0), hit = ROULETTE[0];
+                for (const o of ROULETTE) { if (r < o.w) { hit = o; break; } r -= o.w; }
+                if (face) face.textContent = hit.t;
+                casinoPay(bet, hit.m, `룰렛 ${hit.t}`);
+            }, 1400);
+        }
+
+        function openScoreHelp() { document.getElementById('scoreHelpModal').classList.remove('hidden'); }
+        function closeScoreHelp() { document.getElementById('scoreHelpModal').classList.add('hidden'); }
+
         renderProfileBtn();
+        // 마지막으로 쓴 닉네임(아이디)의 코인·아이템을 미리 불러와요
+        try {
+            const lastNick = localStorage.getItem('wordle_nick');
+            if (lastNick) {
+                document.getElementById('nicknameInput').value = lastNick;
+                switchProfile(lastNick);
+            }
+        } catch (e) {}
 
         // 초기화
         initBoard();
