@@ -350,7 +350,7 @@
                 <h3 class="text-lg font-black text-slate-800">🐾 내 캐릭터 꾸미기</h3>
                 <button onclick="closeShop()" class="text-slate-400 hover:text-slate-600 text-sm font-semibold">닫기</button>
             </div>
-            <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-xl mb-3">
+            <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-xl mb-3 shrink-0">
                 <div id="shopPreview" class="shrink-0 pt-6 pl-2 pr-8 pb-2"></div>
                 <div class="flex-1">
                     <p class="text-xs text-slate-500">내 코인</p>
@@ -360,8 +360,9 @@
                     <button onclick="openCasino()" class="mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-amber-300 text-xs font-black rounded-lg transition">🎰 코인 도박장</button>
                 </div>
             </div>
-            <div id="shopTabs" class="flex gap-1 mb-2 overflow-x-auto"></div>
-            <div id="shopGrid" class="grid grid-cols-3 gap-2 overflow-y-auto pr-1"></div>
+            <div id="shopTabs" class="grid grid-cols-3 gap-1.5 mb-2 shrink-0"></div>
+            <p id="shopCatInfo" class="shrink-0 text-xs font-bold text-slate-500 mb-1.5"></p>
+            <div id="shopGrid" class="grid grid-cols-3 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start"></div>
         </div>
     </div>
 
@@ -2125,7 +2126,7 @@
                 { id: 'galaxy', n: '은하수', p: 700, css: 'radial-gradient(circle at 30% 30%,#a78bfa,#1e1b4b 70%)' }
             ]
         };
-        const SHOP_TABS = [['a', '동물'], ['hat', '모자'], ['face', '얼굴'], ['neck', '목'], ['side', '손/옆'], ['bg', '배경']];
+        const SHOP_TABS = [['a', '🐾 동물'], ['hat', '🎩 모자'], ['face', '👓 얼굴'], ['neck', '🧣 목'], ['side', '🎈 손/옆'], ['bg', '🎨 배경']];
         const catalog = cat => cat === 'a' ? AVATAR_BASES : (SHOP_ITEMS[cat] || []);
         let shopTab = 'a';
 
@@ -2266,9 +2267,13 @@
                 : '닉네임으로 방에 입장하면 그 아이디에 코인이 저장돼요.';
             document.getElementById('shopCoins').textContent = `🪙 ${profile.coins}`;
             document.getElementById('shopTabs').innerHTML = SHOP_TABS.map(([cat, label]) =>
-                `<button onclick="setShopTab('${cat}')" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition ${shopTab === cat ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${label}</button>`
+                `<button onclick="setShopTab('${cat}')" class="py-2 rounded-lg text-sm font-black text-center transition ${shopTab === cat ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">${label}</button>`
             ).join('');
-            document.getElementById('shopGrid').innerHTML = catalog(shopTab).map(it => {
+            const curTab = SHOP_TABS.find(t => t[0] === shopTab) || SHOP_TABS[0];
+            const curItems = catalog(shopTab);
+            const ownedCnt = curItems.filter(it => it.p === 0 || profile.owned.includes(it.id)).length;
+            document.getElementById('shopCatInfo').textContent = `${curTab[1]} · 총 ${curItems.length}종 (보유 ${ownedCnt})`;
+            document.getElementById('shopGrid').innerHTML = curItems.map(it => {
                 const owned = it.p === 0 || profile.owned.includes(it.id);
                 const equipped = profile.eq[shopTab] === it.id;
                 const preview = shopTab === 'bg'
@@ -2277,7 +2282,7 @@
                 const label = equipped ? '착용중 ✓' : (owned ? '착용하기' : `🪙 ${it.p}`);
                 const labelCls = equipped ? 'text-emerald-700' : (owned ? 'text-slate-600' : (profile.coins >= it.p ? 'text-amber-600' : 'text-slate-400'));
                 return `<div class="shop-item ${equipped ? 'equipped' : ''}" onclick="shopItemClick('${shopTab}','${it.id}')">
-                    ${preview}<p class="text-[11px] font-bold text-slate-700 mt-1">${it.n}</p><p class="text-[11px] font-bold ${labelCls}">${label}</p></div>`;
+                    ${preview}<p class="text-xs font-black text-slate-800 mt-1 leading-tight">${it.n}</p><p class="text-xs font-bold ${labelCls}">${label}</p></div>`;
             }).join('');
         }
 
