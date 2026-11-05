@@ -69,13 +69,37 @@
         .leader-msg .av { box-shadow: 0 0 0 2px #fbbf24, 0 0 10px rgba(251,191,36,.7); }
 
         /* 🐾 캐릭터 */
-        .av { position: relative; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; line-height: 1; flex-shrink: 0; border: 1px solid rgba(0,0,0,.06); }
-        .av > span { position: absolute; line-height: 1; pointer-events: none; }
-        .av > .av-base { position: static; }
+        .av { position: relative; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; line-height: 1; flex-shrink: 0; border: 1px solid rgba(0,0,0,.06); isolation: isolate; }
+        .av > span { position: absolute; line-height: 1; pointer-events: none; z-index: 2; }
+        .av > .av-base { position: relative; z-index: 1; }
         .av-hat, .av-face, .av-neck { left: 50%; transform: translateX(-50%); }
+        .av-side { transform: none; }
         .shop-item { border: 2px solid #e2e8f0; border-radius: 0.75rem; padding: 0.5rem 0.25rem; text-align: center; background: #fff; cursor: pointer; transition: all .1s; }
         .shop-item:active { transform: scale(0.96); }
         .shop-item.equipped { border-color: #10b981; background: #ecfdf5; }
+        /* ✨ 반짝이는(움직이는) 배경 */
+        @keyframes fxTwinkle { 0%,100% { opacity: .12; } 50% { opacity: 1; } }
+        @keyframes fxSweep { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
+        @keyframes fxShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .fx::before, .fx::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 0; }
+        .fx-glitter::before, .fx-stardust::before {
+            background-image: radial-gradient(circle at 18% 22%, #fff 0 1.2px, transparent 2.4px), radial-gradient(circle at 78% 18%, #fff 0 1px, transparent 2px),
+                radial-gradient(circle at 62% 72%, #fff 0 1.4px, transparent 2.6px), radial-gradient(circle at 26% 80%, #fff 0 1px, transparent 2px),
+                radial-gradient(circle at 90% 55%, #fff 0 1px, transparent 2px);
+            animation: fxTwinkle 1.8s ease-in-out infinite;
+        }
+        .fx-glitter::after, .fx-stardust::after {
+            background-image: radial-gradient(circle at 42% 10%, #fff 0 1px, transparent 2px), radial-gradient(circle at 8% 55%, #fff 0 1.3px, transparent 2.5px),
+                radial-gradient(circle at 86% 84%, #fff 0 1.2px, transparent 2.4px), radial-gradient(circle at 52% 48%, #fff 0 .8px, transparent 1.8px),
+                radial-gradient(circle at 70% 38%, #fff 0 1px, transparent 2px);
+            animation: fxTwinkle 1.8s ease-in-out infinite .9s;
+        }
+        .fx-holo, .fx-flow { background-size: 220% 220% !important; animation: fxShift 4s ease-in-out infinite; }
+        .fx-holo::after, .fx-goldshine::after, .fx-flow::after {
+            background-image: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.8) 50%, transparent 65%);
+            background-size: 250% 100%; animation: fxSweep 2.6s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) { .fx, .fx::before, .fx::after { animation: none !important; } }
         @keyframes avBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
         .av-bounce { animation: avBounce 1.4s ease-in-out infinite; }
         @keyframes popIn { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -361,7 +385,11 @@
                 </div>
             </div>
             <div id="shopTabs" class="grid grid-cols-3 gap-1.5 mb-2 shrink-0"></div>
-            <p id="shopCatInfo" class="shrink-0 text-xs font-bold text-slate-500 mb-1.5"></p>
+            <div class="shrink-0 flex items-center justify-between gap-2 mb-1.5">
+                <p id="shopCatInfo" class="text-xs font-bold text-slate-500"></p>
+                <button onclick="clearAccessories()" class="shrink-0 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold rounded-md transition">✂️ 장식 전부 벗기</button>
+            </div>
+            <p id="shopFaceNote" class="hidden shrink-0 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 mb-1.5"></p>
             <div id="shopGrid" class="grid grid-cols-3 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start"></div>
         </div>
     </div>
@@ -2091,8 +2119,8 @@
                 { id: '🔥', n: '불꽃', p: 400 }, { id: '🌈', n: '무지개', p: 400 }, { id: '👑', n: '왕관', p: 600 }
             ],
             face: [
-                { id: '👓', n: '안경', p: 150 }, { id: '😷', n: '마스크', p: 150 }, { id: '🕶️', n: '선글라스', p: 200 }, { id: '💋', n: '입술', p: 200 },
-                { id: '🥽', n: '고글', p: 250 }, { id: '🌹', n: '장미', p: 250 }, { id: '🎭', n: '가면', p: 300 }, { id: '✨', n: '반짝이', p: 300 }, { id: '💫', n: '별빛', p: 400 }
+                { id: '👓', n: '안경', p: 150 }, { id: '💖', n: '볼하트', p: 150 }, { id: '🕶️', n: '선글라스', p: 200 }, { id: '💋', n: '키스마크', p: 200 },
+                { id: '🥽', n: '고글', p: 250 }, { id: '🌹', n: '귀에 꽂은 장미', p: 250 }, { id: '✨', n: '반짝이', p: 300 }, { id: '💫', n: '별빛', p: 400 }
             ],
             neck: [
                 { id: '🎗️', n: '리본뱃지', p: 150 }, { id: '🧣', n: '목도리', p: 180 }, { id: '🔔', n: '방울', p: 200 }, { id: '👔', n: '넥타이', p: 200 },
@@ -2123,7 +2151,12 @@
                 { id: 'rainbow', n: '무지개', p: 500, css: 'linear-gradient(135deg,#fca5a5,#fde68a,#86efac,#93c5fd,#c4b5fd)' },
                 { id: 'neon', n: '네온', p: 500, css: 'linear-gradient(135deg,#f0abfc,#22d3ee)' },
                 { id: 'gold', n: '황금', p: 600, css: 'linear-gradient(135deg,#fde68a,#f59e0b,#fde68a)' },
-                { id: 'galaxy', n: '은하수', p: 700, css: 'radial-gradient(circle at 30% 30%,#a78bfa,#1e1b4b 70%)' }
+                { id: 'galaxy', n: '은하수', p: 700, css: 'radial-gradient(circle at 30% 30%,#a78bfa,#1e1b4b 70%)' },
+                { id: 'glitter', n: '별가루 반짝', p: 1000, css: 'linear-gradient(135deg,#fbcfe8,#c4b5fd,#a5f3fc)', fx: 'glitter' },
+                { id: 'holo', n: '홀로그램', p: 1200, css: 'linear-gradient(135deg,#ff9a9e,#fad0c4,#a1c4fd,#c2ffd8,#fbc2eb,#ff9a9e)', fx: 'holo' },
+                { id: 'goldshine', n: '황금 광채', p: 1500, css: 'linear-gradient(135deg,#fde68a,#f59e0b,#fbbf24)', fx: 'goldshine' },
+                { id: 'stardust', n: '별이 쏟아지는 밤', p: 1800, css: 'radial-gradient(circle at 30% 30%,#6d28d9,#0f172a 75%)', fx: 'stardust' },
+                { id: 'flow', n: '무지개 물결', p: 2000, css: 'linear-gradient(135deg,#f87171,#fbbf24,#34d399,#60a5fa,#a78bfa,#f87171)', fx: 'flow' }
             ]
         };
         const SHOP_TABS = [['a', '🐾 동물'], ['hat', '🎩 모자'], ['face', '👓 얼굴'], ['neck', '🧣 목'], ['side', '🎈 손/옆'], ['bg', '🎨 배경']];
@@ -2136,13 +2169,19 @@
             eq: { a: '🐶', hat: '', face: '', neck: '', side: '', bg: '' },
             ts: 0
         });
+        // 얼굴을 통째로 덮어서 제거한 아이템 → 이미 샀다면 코인으로 환불
+        const REMOVED_ITEMS = { '😷': 150, '🎭': 300 };
         function parseProfile(p) {
             const d = defaultProfile();
             if (!p || typeof p !== 'object') return d;
+            let refund = 0;
+            const ownedRaw = Array.from(new Set(d.owned.concat(Array.isArray(p.owned) ? p.owned : [])));
+            const owned = ownedRaw.filter(id => { if (REMOVED_ITEMS[id]) { refund += REMOVED_ITEMS[id]; return false; } return true; });
+            const eq = Object.assign(d.eq, p.eq || {});
+            if (REMOVED_ITEMS[eq.face]) eq.face = '';
             return {
-                coins: Math.max(0, parseInt(p.coins, 10) || 0),
-                owned: Array.from(new Set(d.owned.concat(Array.isArray(p.owned) ? p.owned : []))),
-                eq: Object.assign(d.eq, p.eq || {}),
+                coins: Math.max(0, parseInt(p.coins, 10) || 0) + refund,
+                owned, eq,
                 ts: parseInt(p.ts, 10) || 0
             };
         }
@@ -2218,20 +2257,44 @@
         }
         function myAvatar() { return sanitizeAv(profile.eq); }
 
+        // ── 캐릭터 조합 배치표 (크기·위치는 캐릭터 크기 대비 비율) ──────────────────
+        // 얼굴이 정면인 동물에게만 안경/볼 장식이 보여요 (물고기·곤충·펭귄 등은 얼굴 위치가 달라서 제외)
+        const FACE_BASES = new Set(['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐴','🦄','🐺','🐗','🐲','👻','🎃','👽','🤖']);
+        const HAT_DEFAULT = { fs: 0.46, t: -0.30 };
+        const HAT_LAYOUT = {
+            '🎩': { fs: 0.50, t: -0.32 }, '👑': { fs: 0.46, t: -0.30 }, '🧢': { fs: 0.46, t: -0.28 }, '👒': { fs: 0.54, t: -0.28 },
+            '🎓': { fs: 0.50, t: -0.30 }, '⛑️': { fs: 0.46, t: -0.26 }, '🎧': { fs: 0.58, t: -0.22 },
+            '🌻': { fs: 0.40, t: -0.30 }, '🍉': { fs: 0.40, t: -0.28 }, '🍄': { fs: 0.40, t: -0.28 }, '🔥': { fs: 0.40, t: -0.30 },
+            '🌈': { fs: 0.44, t: -0.28 }, '⭐': { fs: 0.34, t: -0.28 }, '🌸': { fs: 0.34, t: -0.24 }, '🍀': { fs: 0.34, t: -0.24 }, '🎀': { fs: 0.38, t: -0.24 }
+        };
+        // face:true = 얼굴 위에 올라가는 장식 (정면 얼굴 동물에게만 표시) / cx = 가로 중심 위치
+        const FACE_LAYOUT = {
+            '👓': { fs: 0.46, cx: 0.50, t: 0.20, face: true }, '🕶️': { fs: 0.46, cx: 0.50, t: 0.20, face: true }, '🥽': { fs: 0.46, cx: 0.50, t: 0.20, face: true },
+            '💋': { fs: 0.20, cx: 0.24, t: 0.52, face: true }, '💖': { fs: 0.20, cx: 0.72, t: 0.54, face: true }, '🌹': { fs: 0.28, cx: 0.17, t: 0.14, face: true },
+            '✨': { fs: 0.28, cx: 0.88, t: -0.02 }, '💫': { fs: 0.28, cx: 0.12, t: -0.02 }
+        };
+        function faceItemVisible(av) {
+            const L = av && av.face ? FACE_LAYOUT[av.face] : null;
+            return !!L && (!L.face || FACE_BASES.has(av.a));
+        }
+
         function avatarHtml(av, size, bounce) {
             av = av || sanitizeAv(null);
             size = size || 40;
             const bgItem = SHOP_ITEMS.bg.find(b => b.id === av.bg);
             const bg = bgItem ? bgItem.css : '#f1f5f9';
             const r = n => Math.round(size * n);
-            // 모자/옆 장식이 바깥으로 튀어나오는 만큼 여백을 줘서 다른 요소와 겹치지 않게
-            const margin = `margin:${av.hat ? r(0.26) : 0}px ${av.side ? r(0.3) : 0}px ${av.neck ? r(0.12) : 0}px 0;`;
-            return `<span class="av${bounce ? ' av-bounce' : ''}" style="width:${size}px;height:${size}px;background:${bg};font-size:${r(0.62)}px;${margin}">` +
+            const hatL = av.hat ? (HAT_LAYOUT[av.hat] || HAT_DEFAULT) : null;
+            const faceL = faceItemVisible(av) ? FACE_LAYOUT[av.face] : null;
+            // 바깥으로 튀어나오는 만큼 여백을 줘서 다른 요소와 겹치지 않게
+            const margin = `margin:${hatL ? r(-hatL.t) : 0}px ${av.side ? r(0.32) : 0}px ${av.neck ? r(0.16) : 0}px 0;`;
+            const fx = bgItem && bgItem.fx ? ` fx fx-${bgItem.fx}` : '';
+            return `<span class="av${bounce ? ' av-bounce' : ''}${fx}" style="width:${size}px;height:${size}px;background:${bg};font-size:${r(0.62)}px;${margin}">` +
                 `<span class="av-base">${av.a}</span>` +
-                (av.hat ? `<span class="av-hat" style="font-size:${r(0.58)}px;top:${-r(0.3)}px">${av.hat}</span>` : '') +
-                (av.face ? `<span class="av-face" style="font-size:${r(0.5)}px;top:${r(0.27)}px">${av.face}</span>` : '') +
-                (av.neck ? `<span class="av-neck" style="font-size:${r(0.46)}px;bottom:${-r(0.16)}px">${av.neck}</span>` : '') +
-                (av.side ? `<span class="av-side" style="font-size:${r(0.52)}px;right:${-r(0.32)}px;bottom:${-r(0.02)}px">${av.side}</span>` : '') +
+                (hatL ? `<span class="av-hat" style="font-size:${r(hatL.fs)}px;top:${r(hatL.t)}px">${av.hat}</span>` : '') +
+                (faceL ? `<span class="av-face" style="font-size:${r(faceL.fs)}px;left:${faceL.cx * 100}%;top:${r(faceL.t)}px">${av.face}</span>` : '') +
+                (av.neck ? `<span class="av-neck" style="font-size:${r(0.38)}px;top:${r(0.78)}px">${av.neck}</span>` : '') +
+                (av.side ? `<span class="av-side" style="font-size:${r(0.52)}px;left:${r(0.80)}px;top:${r(0.50)}px">${av.side}</span>` : '') +
                 `</span>`;
         }
 
@@ -2258,6 +2321,12 @@
 
         function openShop() { renderShop(); document.getElementById('shopModal').classList.remove('hidden'); }
         function closeShop() { document.getElementById('shopModal').classList.add('hidden'); }
+        function clearAccessories() {
+            profile.eq.hat = ''; profile.eq.face = ''; profile.eq.neck = ''; profile.eq.side = '';
+            saveProfile(); renderShop(); renderProfileBtn(); pushMyAvatar();
+            showToast('장식을 모두 벗었어요. (배경은 그대로예요)');
+        }
+
         function setShopTab(cat) { shopTab = cat; renderShop(); }
 
         function renderShop() {
@@ -2273,15 +2342,20 @@
             const curItems = catalog(shopTab);
             const ownedCnt = curItems.filter(it => it.p === 0 || profile.owned.includes(it.id)).length;
             document.getElementById('shopCatInfo').textContent = `${curTab[1]} · 총 ${curItems.length}종 (보유 ${ownedCnt})`;
+            const noteEl = document.getElementById('shopFaceNote');
+            const faceHidden = shopTab === 'face' && !FACE_BASES.has(profile.eq.a);
+            noteEl.classList.toggle('hidden', !faceHidden);
+            if (faceHidden) noteEl.textContent = '⚠️ 지금 캐릭터는 얼굴이 정면이 아니라 안경·볼 장식이 보이지 않아요. (✨ 💫 는 가능!) 🐶🐱🐰🐻🐼🦊 같은 동물에게 어울려요.';
             document.getElementById('shopGrid').innerHTML = curItems.map(it => {
                 const owned = it.p === 0 || profile.owned.includes(it.id);
                 const equipped = profile.eq[shopTab] === it.id;
                 const preview = shopTab === 'bg'
-                    ? `<div class="mx-auto w-10 h-10 rounded-full border border-slate-200" style="background:${it.css}"></div>`
+                    ? `<div class="mx-auto w-10 h-10 rounded-full border border-slate-200 relative${it.fx ? ' fx fx-' + it.fx : ''}" style="background:${it.css}"></div>`
                     : `<div class="text-3xl leading-none h-10 flex items-center justify-center">${it.id}</div>`;
                 const label = equipped ? '착용중 ✓' : (owned ? '착용하기' : `🪙 ${it.p}`);
                 const labelCls = equipped ? 'text-emerald-700' : (owned ? 'text-slate-600' : (profile.coins >= it.p ? 'text-amber-600' : 'text-slate-400'));
-                return `<div class="shop-item ${equipped ? 'equipped' : ''}" onclick="shopItemClick('${shopTab}','${it.id}')">
+                const dim = faceHidden && FACE_LAYOUT[it.id] && FACE_LAYOUT[it.id].face;
+                return `<div class="shop-item ${equipped ? 'equipped' : ''}${dim ? ' opacity-50' : ''}" onclick="shopItemClick('${shopTab}','${it.id}')">
                     ${preview}<p class="text-xs font-black text-slate-800 mt-1 leading-tight">${it.n}</p><p class="text-xs font-bold ${labelCls}">${label}</p></div>`;
             }).join('');
         }
