@@ -139,7 +139,7 @@
         // 자모 조합 검증 함수
         function isValidJamoSequence(jamoStr) {
             if (!jamoStr || jamoStr.length === 0) return true;
-            if (typeof Hangul === 'undefined') return true;
+            if (typeof Hangul === 'undefined') return false;
 
             return assembleCandidates(jamoStr).some(w => Hangul.isCompleteAll(w));
         }
@@ -177,7 +177,7 @@
         // EXTRA_WORDS는 dictionary.js에서 관리합니다.
 
         function isDictionaryWord(jamoStr) {
-            if (typeof Hangul === 'undefined' || typeof dictSet === 'undefined') return true;
+            if (typeof Hangul === 'undefined' || !isDictionaryReady(wordLength)) return false;
             return assembleCandidates(jamoStr).some(w => Hangul.isCompleteAll(w) && dictSet.has(w));
         }
 
@@ -207,6 +207,7 @@
                 if (!confirm("글자 수를 변경하면 진행 중인 입력이 초기화됩니다. 변경하시겠습니까?")) return;
             }
             wordLength = len;
+            ensureDictionaryForLength(wordLength).catch(() => showToast("사전 로딩에 실패했습니다. 새로고침해 주세요."));
             setWordLengthUI(wordLength);
 
             if (currentRoomCode && isMaster) {
@@ -405,6 +406,11 @@
 
         function handleSubmit() {
             if (isSpectator) return;
+            if (!isDictionaryReady(wordLength)) {
+                showToast("단어사전을 불러오는 중이에요. 잠시 후 다시 제출해주세요.");
+                ensureDictionaryForLength(wordLength).catch(() => showToast("사전 로딩 실패. 인터넷 연결 후 다시 시도해주세요."));
+                return;
+            }
             if (isMaster) {
                 if (hasMasterSetWord) {
                     showToast("이미 출제가 완료되었습니다!");
@@ -615,6 +621,7 @@
                 isSpectator = newSpectator;
                 if (room.targetLength) {
                     wordLength = room.targetLength;
+                    ensureDictionaryForLength(wordLength).catch(() => showToast("사전 로딩 실패. 인터넷 연결을 확인하세요."));
                     setWordLengthUI(wordLength);
                 }
 
@@ -692,6 +699,7 @@
 
                 if (WORD_LENGTHS.includes(Number(data.targetLength)) && data.targetLength !== wordLength) {
                     wordLength = data.targetLength;
+                    ensureDictionaryForLength(wordLength).catch(() => showToast("사전 로딩 실패. 인터넷 연결을 확인하세요."));
                     setWordLengthUI(wordLength);
                     resetGameData();
                 }
@@ -2719,6 +2727,8 @@
         } catch (e) {}
 
 
+// 초기 자모 사전은 필요한 길이만 다운로드합니다. (브라우저 캐시 사용)
+ensureDictionaryForLength(wordLength).catch(() => showToast("사전 로딩 실패. 인터넷 연결을 확인하세요."));
 // 초기화
 initBoard();
 applyTileSkin();
