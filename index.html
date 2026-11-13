@@ -165,35 +165,13 @@
         .nick-galaxy {background:linear-gradient(95deg,#7c3aed,#22d3ee,#e879f9,#7c3aed);background-size:220% 100%;background-clip:text;-webkit-background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 4px #a78bfa);animation:nickShimmer 4s linear infinite;}
         @keyframes nickShimmer {to{background-position:220% 0}}
         @keyframes nickPulse {50%{filter:brightness(1.5)}}
-        /* 캐릭터 뒷편에 두 날개를 배치. 크기는 아바타의 52%에 비례 */
-
-        .av > .av-wingbox { position:absolute !important; inset:-18% -38% -8% -38%; z-index:0 !important; pointer-events:none; }
-        .av-wingbox .wing-svg { position:absolute; top:12%; width:56%; height:78%; overflow:visible; filter: drop-shadow(0 2px 4px rgba(31,41,55,.16)); }
-        .av-wingbox .wing-left { left:-8%; transform-origin:78% 50%; }
-        .av-wingbox .wing-right { right:-8%; transform:scaleX(-1); transform-origin:22% 50%; }
-        .av-wingbox .wing-core { stroke-width:4; stroke-linejoin:round; }
-        .av-wingbox .wing-detail { fill:none; stroke:rgba(255,255,255,.72); stroke-width:2.2; stroke-linecap:round; }
-        .av-wingbox .wing-spark { fill:#fff; opacity:.88; }
-        .av-wingbox .wing-crystal { stroke-width:2; }
-        .av-wingbox .wing-aura { fill:none; stroke-linecap:round; }
-        .av-wingbox .wing-halo { position:absolute; left:50%; top:-4%; transform:translateX(-50%); width:42%; height:14%; border-radius:999px; border:2px solid rgba(250,204,21,.95); box-shadow:0 0 10px rgba(253,224,71,.8), inset 0 0 8px rgba(255,255,255,.7); background:radial-gradient(circle at 50% 50%, rgba(255,255,255,.8) 0 15%, rgba(255,255,255,0) 65%); }
-        .av-wingbox .wing-halo::after { content:''; position:absolute; inset:25% 10%; border-radius:999px; background:rgba(254,240,138,.28); filter:blur(4px); }
-        .av-wingbox .wing-glow { position:absolute; inset:14% 8% 10% 8%; border-radius:999px; opacity:.78; filter:blur(10px); z-index:-1; }
-        .av-wingbox.wing-angel .wing-glow { background:radial-gradient(circle at 50% 50%, rgba(191,219,254,.7), rgba(255,255,255,0) 68%); }
-        .av-wingbox.wing-butterfly .wing-glow { background:radial-gradient(circle at 50% 50%, rgba(192,132,252,.45), rgba(59,130,246,.2), rgba(255,255,255,0) 70%); }
-        .av-wingbox.wing-fairy .wing-glow { background:radial-gradient(circle at 50% 50%, rgba(134,239,172,.4), rgba(196,181,253,.16), rgba(255,255,255,0) 70%); }
-        .av-wingbox.wing-devil .wing-glow { background:radial-gradient(circle at 50% 50%, rgba(248,113,113,.32), rgba(127,29,29,.18), rgba(255,255,255,0) 68%); }
-        .av-wingbox.wing-fire .wing-glow { background:radial-gradient(circle at 50% 50%, rgba(251,146,60,.45), rgba(239,68,68,.2), rgba(255,255,255,0) 70%); }
-        .av-wingbox.wing-aurora .wing-glow { background:radial-gradient(circle at 50% 50%, rgba(34,211,238,.32), rgba(236,72,153,.18), rgba(255,255,255,0) 72%); }
-        .av-wingbox.wing-crystal .wing-glow { background:radial-gradient(circle at 50% 50%, rgba(125,211,252,.35), rgba(167,139,250,.18), rgba(255,255,255,0) 70%); }
-        .av-wingbox .wing-twinkle { position:absolute; width:9%; aspect-ratio:1; background:radial-gradient(circle, rgba(255,255,255,.98) 0 32%, rgba(255,255,255,0) 34%); filter:drop-shadow(0 0 6px rgba(255,255,255,.85)); opacity:.9; }
-        .av-wingbox .tw1 { left:10%; top:20%; }
-        .av-wingbox .tw2 { right:10%; top:32%; width:7%; }
-        .av-wingbox .tw3 { left:48%; bottom:12%; width:6%; }
-        .av-wingbox.wing-aurora .wing-svg, .av-wingbox.wing-butterfly .wing-svg { animation: wingShimmer 3.2s ease-in-out infinite; }
-        .av-wingbox.wing-angel .wing-left, .av-wingbox.wing-fire .wing-left { animation: wingFloat 2.8s ease-in-out infinite; }
-        @keyframes wingFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
-        @keyframes wingShimmer { 0%,100% { filter: drop-shadow(0 2px 4px rgba(31,41,55,.16)) brightness(1); } 50% { filter: drop-shadow(0 0 8px rgba(255,255,255,.45)) brightness(1.08); } }
+        /* 날개 v3: SVG 이미지 전체를 배경으로, 캐릭터 본체는 위에 둔다. */
+        .av > .av-wing-art { position:absolute !important; left:50%; top:50%; width:205%; height:140%; transform:translate(-50%,-50%); z-index:0 !important; pointer-events:none; overflow:visible; }
+        .av-wing-art img { display:block; width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 1px 2px rgba(21,40,79,.23)); }
+        .av > .av-base {position:relative!important; z-index:2!important;}
+        .av > .av-hat,.av > .av-face,.av > .av-neck,.av > .av-side { z-index:3!important; }
+        .shop-item .av { isolation:isolate; }
+        @media (prefers-reduced-motion: reduce){.av-wing-art img{animation:none!important}}
         .nick-gold { color:#b45309; text-shadow:0 0 0 rgba(0,0,0,0); }
         .nick-ruby { color:#be123c; text-shadow:0 0 8px rgba(244,63,94,.25); }
         .nick-sky { color:#0369a1; text-shadow:0 0 8px rgba(56,189,248,.22); }
