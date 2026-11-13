@@ -2037,10 +2037,22 @@
                 }
             };
             const s = specs[kind] || specs.angel;
-            const uid = 'wg' + Math.random().toString(36).slice(2, 9);
-            const paint = svg => svg.replaceAll('wgFill', uid + 'f').replaceAll('wgStroke', uid + 's').replaceAll('wgShard', uid + 'h');
-            const left = paint(s.svg);
-            const right = paint(s.svg).replace('wing-left', 'wing-right');
+            // Each SVG gets independent paint IDs. Bind fills explicitly: the old
+            // CSS url(#wgFill) was stale after IDs were randomized, hiding the wings.
+            const uid = 'wg' + Math.random().toString(36).slice(2, 10);
+            function paintedSvg(markup, suffix) {
+                const fillId = uid + suffix + 'f';
+                const strokeId = uid + suffix + 's';
+                const shardId = uid + suffix + 'h';
+                return markup
+                    .replaceAll('wgFill', fillId)
+                    .replaceAll('wgStroke', strokeId)
+                    .replaceAll('wgShard', shardId)
+                    .replaceAll('class="wing-core"', `class="wing-core" style="fill:url(#${fillId});stroke:url(#${strokeId})"`)
+                    .replaceAll('class="wing-crystal"', `class="wing-crystal" style="fill:url(#${shardId});stroke:rgba(255,255,255,.85)"`);
+            }
+            const left = paintedSvg(s.svg, 'l');
+            const right = paintedSvg(s.svg, 'r').replace('wing-left', 'wing-right');
             return `<span class="av-wingbox ${s.cls}" aria-hidden="true">${s.extras || ''}${left}${right}</span>`;
         }
 
@@ -2121,7 +2133,7 @@
                     : shopTab === 'tile'
                     ? `<div class="mx-auto w-10 h-10 rounded-lg border-2 border-slate-300 ${it.cssClass}" style="background:${tileSampleBackground(it.id)}"></div>`
                     : shopTab === 'wing'
-                    ? `<div class="flex items-center justify-center h-10">${avatarHtml(sanitizeAv({...profile.eq,wing:it.id}), 34)}</div>`
+                    ? `<div class="flex items-center justify-center h-16 pt-1">${avatarHtml(sanitizeAv({...profile.eq,wing:it.id}), 38)}</div>`
                     : shopTab === 'name'
                     ? `<div class="h-10 flex items-center justify-center">${styledNameHtml('닉네임',it.id)}</div>`
                     : shopTab === 'victory'
