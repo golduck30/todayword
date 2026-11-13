@@ -2003,6 +2003,47 @@
             return !!L && (!L.face || FACE_BASES.has(av.a));
         }
 
+        function wingSvgHtml(wingId) {
+            if (!wingId || wingId === 'wing:none') return '';
+            const kind = wingId.replace('wing:', '');
+            const specs = {
+                angel: {
+                    cls: 'wing-angel', extras: `<span class="wing-halo"></span><span class="wing-glow"></span><span class="wing-twinkle tw1"></span><span class="wing-twinkle tw2"></span>`,
+                    svg: `<svg viewBox="0 0 120 100" class="wing-svg wing-left" aria-hidden="true"><defs><linearGradient id="wgFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="55%" stop-color="#f8fbff"/><stop offset="100%" stop-color="#dbeafe"/></linearGradient><linearGradient id="wgStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#bfdbfe"/></linearGradient></defs><path class="wing-core" d="M104 50C95 26 70 9 39 13C19 16 8 31 8 48c0 16 12 32 27 36c16 5 31 1 44-10c10-8 19-14 25-24z"/><path class="wing-detail" d="M91 42C70 36 47 37 23 45"/><path class="wing-detail" d="M87 53C68 52 49 56 30 66"/><path class="wing-detail" d="M74 64C58 67 44 72 32 80"/><path class="wing-detail" d="M74 26C59 25 43 27 26 34"/></svg>`
+                },
+                butterfly: {
+                    cls: 'wing-butterfly', extras: `<span class="wing-glow"></span><span class="wing-twinkle tw1"></span><span class="wing-twinkle tw2"></span><span class="wing-twinkle tw3"></span>`,
+                    svg: `<svg viewBox="0 0 120 110" class="wing-svg wing-left" aria-hidden="true"><defs><linearGradient id="wgFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="48%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#c084fc"/></linearGradient><linearGradient id="wgStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient></defs><path class="wing-core" d="M103 54c-7-21-25-40-53-42C24 10 9 28 10 48c2 21 18 34 40 34c17 0 29-8 40-28z"/><path class="wing-core" d="M89 62c-14 4-26 12-35 26c-7 11-20 16-31 10c-10-5-13-17-8-27c7-13 23-21 38-22c10 0 19 3 27 13z" opacity=".96"/><ellipse cx="55" cy="36" rx="9" ry="11" fill="rgba(255,255,255,.75)"/><ellipse cx="50" cy="71" rx="8" ry="9" fill="rgba(255,255,255,.7)"/><path class="wing-detail" d="M88 49C70 43 55 42 31 44"/><path class="wing-detail" d="M78 67C65 66 53 69 37 79"/></svg>`
+                },
+                fairy: {
+                    cls: 'wing-fairy', extras: `<span class="wing-glow"></span><span class="wing-twinkle tw1"></span><span class="wing-twinkle tw2"></span>`,
+                    svg: `<svg viewBox="0 0 120 110" class="wing-svg wing-left" aria-hidden="true"><defs><linearGradient id="wgFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="rgba(255,255,255,.9)"/><stop offset="35%" stop-color="rgba(186,230,253,.75)"/><stop offset="100%" stop-color="rgba(134,239,172,.85)"/></linearGradient><linearGradient id="wgStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#bbf7d0"/><stop offset="100%" stop-color="#6ee7b7"/></linearGradient></defs><path class="wing-core" d="M100 53C94 28 74 8 48 10c-17 1-30 14-31 31c-1 16 10 29 26 33c14 4 29 1 45-11c7-5 12-10 12-10z" opacity=".95"/><path class="wing-core" d="M83 58C64 60 49 68 39 86c-5 10-17 13-25 7c-8-6-9-18-2-27c8-10 18-15 32-16c14-1 27 2 39 10z" opacity=".78"/><path class="wing-detail" d="M86 50C67 47 48 48 28 54"/><path class="wing-detail" d="M70 70C58 72 46 76 35 84"/></svg>`
+                },
+                devil: {
+                    cls: 'wing-devil', extras: `<span class="wing-glow"></span>`,
+                    svg: `<svg viewBox="0 0 120 100" class="wing-svg wing-left" aria-hidden="true"><defs><linearGradient id="wgFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f87171"/><stop offset="45%" stop-color="#b91c1c"/><stop offset="100%" stop-color="#3f0a0a"/></linearGradient><linearGradient id="wgStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fecaca"/><stop offset="100%" stop-color="#7f1d1d"/></linearGradient></defs><path class="wing-core" d="M104 55c-6-21-23-36-49-36C34 19 18 31 13 49c-3 11-3 24 2 35c12-11 20-16 35-17c4-15 12-24 28-31c8 7 14 12 26 19z"/><path class="wing-detail" d="M80 40C62 43 49 49 36 60"/><path class="wing-detail" d="M83 53C65 54 52 58 37 66"/></svg>`
+                },
+                fire: {
+                    cls: 'wing-fire', extras: `<span class="wing-glow"></span><span class="wing-twinkle tw1"></span><span class="wing-twinkle tw2"></span>`,
+                    svg: `<svg viewBox="0 0 120 110" class="wing-svg wing-left" aria-hidden="true"><defs><linearGradient id="wgFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fde68a"/><stop offset="45%" stop-color="#fb923c"/><stop offset="100%" stop-color="#dc2626"/></linearGradient><linearGradient id="wgStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fef3c7"/><stop offset="100%" stop-color="#c2410c"/></linearGradient></defs><path class="wing-core" d="M104 60C92 40 77 28 55 18c4 14 0 21-10 29c-9 7-16 15-21 28c-4 9-9 15-18 21c14 2 29-1 40-8c15-10 29-18 39-36c8 2 12 5 19 8z"/><path class="wing-detail" d="M80 45C69 48 56 55 44 68"/><path class="wing-detail" d="M89 57C77 59 66 64 54 75"/></svg>`
+                },
+                aurora: {
+                    cls: 'wing-aurora', extras: `<span class="wing-glow"></span><span class="wing-twinkle tw1"></span><span class="wing-twinkle tw2"></span><span class="wing-twinkle tw3"></span>`,
+                    svg: `<svg viewBox="0 0 120 110" class="wing-svg wing-left" aria-hidden="true"><defs><linearGradient id="wgFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#67e8f9"/><stop offset="36%" stop-color="#60a5fa"/><stop offset="68%" stop-color="#c084fc"/><stop offset="100%" stop-color="#f9a8d4"/></linearGradient><linearGradient id="wgStroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cffafe"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs><path class="wing-core" d="M100 54C93 31 74 10 50 11c-17 1-30 13-31 29c-1 18 13 31 31 35c15 3 29 0 43-10c8-6 7-7 7-11c-13-2-21-10-25-21c-7 8-14 16-33 20c15 0 26-3 39-8c-7 10-19 17-39 24c16 4 33-1 58-15z" opacity=".92"/><path class="wing-aura" d="M18 75C46 71 73 60 92 44" stroke="rgba(255,255,255,.65)" stroke-width="4"/><path class="wing-aura" d="M24 58C46 56 67 48 84 35" stroke="rgba(255,255,255,.55)" stroke-width="3"/></svg>`
+                },
+                crystal: {
+                    cls: 'wing-crystal', extras: `<span class="wing-glow"></span><span class="wing-twinkle tw1"></span><span class="wing-twinkle tw2"></span>`,
+                    svg: `<svg viewBox="0 0 120 110" class="wing-svg wing-left" aria-hidden="true"><defs><linearGradient id="wgShard" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="35%" stop-color="#bfdbfe"/><stop offset="72%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs><polygon class="wing-crystal" points="95,19 104,50 82,57 76,33"/><polygon class="wing-crystal" points="74,26 83,56 61,68 55,38"/><polygon class="wing-crystal" points="55,40 62,69 42,83 34,56"/><polygon class="wing-crystal" points="38,58 46,84 22,96 16,70"/></svg>`
+                }
+            };
+            const s = specs[kind] || specs.angel;
+            const uid = 'wg' + Math.random().toString(36).slice(2, 9);
+            const paint = svg => svg.replaceAll('wgFill', uid + 'f').replaceAll('wgStroke', uid + 's').replaceAll('wgShard', uid + 'h');
+            const left = paint(s.svg);
+            const right = paint(s.svg).replace('wing-left', 'wing-right');
+            return `<span class="av-wingbox ${s.cls}" aria-hidden="true">${s.extras || ''}${left}${right}</span>`;
+        }
+
         function avatarHtml(av, size, bounce) {
             av = av || sanitizeAv(null);
             size = size || 40;
@@ -2015,7 +2056,7 @@
             const margin = `margin:${hatL ? r(-hatL.t) : 0}px ${av.side || (av.wing && av.wing !== 'wing:none') ? r(0.35) : 0}px ${av.neck ? r(0.16) : 0}px ${av.wing && av.wing !== 'wing:none' ? r(0.35) : 0}px;`;
             const fx = bgItem && bgItem.fx ? ` fx fx-${bgItem.fx}` : '';
             return `<span class="av${bounce ? ' av-bounce' : ''}${fx}" style="width:${size}px;height:${size}px;background:${bg};font-size:${r(0.62)}px;${margin}">` +
-                (av.wing && av.wing !== 'wing:none' ? `<span class="av-wings ${av.wing.replace('wing:','wings-')}" aria-hidden="true"><i></i><i></i></span>` : '') +
+                (av.wing && av.wing !== 'wing:none' ? wingSvgHtml(av.wing) : '') +
                 `<span class="av-base">${av.a}</span>` +
                 (hatL ? `<span class="av-hat" style="font-size:${r(hatL.fs)}px;top:${r(hatL.t)}px">${av.hat}</span>` : '') +
                 (faceL ? `<span class="av-face" style="font-size:${r(faceL.fs)}px;left:${faceL.cx * 100}%;top:${r(faceL.t)}px">${av.face}</span>` : '') +
