@@ -2008,7 +2008,7 @@
         function wingSvgHtml(wingId) {
             const kind = String(wingId || '').replace('wing:', '');
             if (!WING_ASSET_IDS.has(kind)) return '';
-            return `<span class="av-wing-art" aria-hidden="true"><img src="assets/wings/${kind}.svg" alt="" draggable="false" loading="eager"></span>`;
+            return `<span class="av-wing-art wing-type-${kind}" aria-hidden="true"><img src="assets/wings/${kind}.svg" alt="" draggable="false" loading="eager"></span>`;
         }
 
         function avatarHtml(av, size, bounce) {
@@ -2092,7 +2092,7 @@
                     : shopTab === 'name'
                     ? `<div class="h-10 flex items-center justify-center">${styledNameHtml('닉네임',it.id)}</div>`
                     : shopTab === 'victory'
-                    ? `<div class="text-3xl leading-none h-10 flex items-center justify-center">${it.icon}</div>`
+                    ? `<div class="h-14 flex flex-col items-center justify-center gap-1"><span class="text-3xl">${it.icon}</span><button type="button" onclick="event.stopPropagation();previewVictoryEffect('${it.id}')" class="text-[10px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full hover:bg-indigo-100">▶ 미리보기</button></div>`
                     : `<div class="text-3xl leading-none h-10 flex items-center justify-center">${it.id}</div>`;
                 const label = equipped ? '착용중 ✓' : (owned ? '착용하기' : `🪙 ${it.p}`);
                 const labelCls = equipped ? 'text-emerald-700' : (owned ? 'text-slate-600' : (profile.coins >= it.p ? 'text-amber-600' : 'text-slate-400'));
@@ -2146,53 +2146,12 @@
         }
         let victoryCleanup = null;
         function playVictoryEffect() {
-            const layer = document.getElementById('victoryEffect');
-            if (!layer) return;
-            clearTimeout(victoryCleanup);
-            layer.replaceChildren();
-            const effect = catalog('victory').find(it => it.id === profile.eq.victory) || catalog('victory')[0];
-            const palettes = {
-                'fx:confetti':['🎊','🎉','✨'], 'fx:stars':['⭐','🌟','✨'], 'fx:hearts':['💖','💞','💕'],
-                'fx:flowers':['🌸','🌺','🌼'], 'fx:lightning':['⚡','🌩️','✨'], 'fx:diamonds':['💎','💠','✨'],
-                'fx:crowns':['👑','🏆','🌟'], 'fx:supernova':['🌟','💫','🌌'], 'fx:dragon':['🐉','🔥','💥'],
-                'fx:rainbow':['🌈','✨','💜'], 'fx:fireworks':['🎆','🎇','✨']
-            };
-            const colors = { 'fx:hearts':'#fb7185','fx:flowers':'#f9a8d4','fx:lightning':'#38bdf8',
-                'fx:diamonds':'#67e8f9','fx:crowns':'#fbbf24','fx:supernova':'#a78bfa',
-                'fx:dragon':'#fb923c','fx:rainbow':'#c084fc','fx:fireworks':'#f472b6' };
-            const color = colors[effect.id] || '#34d399';
-            layer.style.setProperty('--victory-accent',color);
-            const overlay = document.createElement('div'); overlay.className = 'victory-flash'; layer.appendChild(overlay);
-            for(let r=0;r<3;r++) {
-                const ring=document.createElement('div'); ring.className='victory-ring';
-                ring.style.animationDelay=(r*0.16)+'s'; layer.appendChild(ring);
-            }
-            const banner = document.createElement('div');banner.className='victory-banner victory-banner-deluxe';
-            banner.innerHTML='<small>✦ PERFECT MOMENT ✦</small><strong>🎯 정답 성공!</strong><em>'+effect.n+'</em>';
-            layer.appendChild(banner);
-            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                const symbols=palettes[effect.id] || palettes['fx:confetti'];
-                for(let i=0;i<66;i++) {
-                    const bit=document.createElement('span');bit.className='victory-piece victory-piece-deluxe';
-                    bit.textContent=symbols[i%symbols.length];
-                    const angle=2*Math.PI*i/66+(i%3)*0.11;
-                    const dist=95+(i%7)*34;
-                    bit.style.setProperty('--vx',Math.round(Math.cos(angle)*dist)+'px');
-                    bit.style.setProperty('--vy',Math.round(Math.sin(angle)*dist)+'px');
-                    bit.style.setProperty('--rot',(i*57)+'deg');
-                    bit.style.animationDelay=((i%9)*35)+'ms';
-                    bit.style.fontSize=(15+(i%4)*8)+'px';
-                    layer.appendChild(bit);
-                }
-                for(let i=0;i<24;i++) {
-                    const spark=document.createElement('i');spark.className='victory-spark';
-                    const angle=2*Math.PI*i/24;
-                    spark.style.setProperty('--vx',Math.round(Math.cos(angle)*(175+(i%4)*48))+'px');
-                    spark.style.setProperty('--vy',Math.round(Math.sin(angle)*(175+(i%4)*48))+'px');
-                    spark.style.animationDelay=((i%6)*0.07)+'s';layer.appendChild(spark);
-                }
-            }
-            victoryCleanup=setTimeout(()=>layer.replaceChildren(),3100);
+            if (!window.TodaywordVictory) return;
+            window.TodaywordVictory.play(profile.eq.victory || 'fx:confetti');
+        }
+        function previewVictoryEffect(id) {
+            if (!catalog('victory').some(it => it.id === id)) return;
+            if (window.TodaywordVictory) window.TodaywordVictory.play(id);
         }
         const LOOT_PRICE = 400;
         const LOOT_WEIGHTS = [{rarity:'common',weight:60},{rarity:'rare',weight:30},{rarity:'legendary',weight:10}];

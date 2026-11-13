@@ -1,0 +1,12 @@
+/* 날개 B안: SVG 일러스트 유지, 희귀/전설 등급별 움직이는 광채 */
+.av-wing-art img{transform-origin:50% 54%;animation:tw-wing-idle 3.8s ease-in-out infinite;}
+.av-wing-art.wing-type-angel img{filter:drop-shadow(0 0 4px #f0f9ff) drop-shadow(0 0 5px #bfdbfe);}
+.av-wing-art.wing-type-butterfly img{filter:drop-shadow(0 0 5px #d8b4fe) drop-shadow(0 0 4px #67e8f9);animation-duration:3s;}
+.av-wing-art.wing-type-fairy img{filter:drop-shadow(0 0 5px #a7f3d0) drop-shadow(0 0 4px #c4b5fd);}
+.av-wing-art.wing-type-devil img{filter:drop-shadow(0 0 5px #ef4444) drop-shadow(0 0 4px #7f1d1d);}
+.av-wing-art.wing-type-fire img{filter:drop-shadow(0 0 6px #fb923c) drop-shadow(0 0 9px #facc15);animation:tw-wing-legend 2.5s ease-in-out infinite;}
+.av-wing-art.wing-type-aurora img{filter:drop-shadow(0 0 5px #a78bfa) drop-shadow(0 0 8px #67e8f9);animation:tw-wing-legend 3.4s ease-in-out infinite;}
+.av-wing-art.wing-type-crystal img{filter:drop-shadow(0 0 5px #7dd3fc) drop-shadow(0 0 8px #c4b5fd);animation:tw-wing-legend 3.1s ease-in-out infinite;}
+@keyframes tw-wing-idle{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1px) scale(1.015)}}
+@keyframes tw-wing-legend{0%,100%{transform:translateY(0) scale(1);opacity:1}50%{transform:translateY(-2px) scale(1.035);opacity:.9}}
+@media(prefers-reduced-motion:reduce){.av-wing-art img{animation:none!important}}
